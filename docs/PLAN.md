@@ -31,36 +31,35 @@ The repo (`bwbelding/retro-tab`) is empty apart from a README and LICENSE.
   - Custom buttons: either run a function directly (`ExecuteFunction`) or open a task pane (`ShowTaskpane`).
 - **Stack:** TypeScript + React + Fluent UI v9, so it looks native to Office. Built with Vite. Unit tests with Vitest. ESLint + `tsc`.
 - **Code layout**
-  - `manifests/template.xml` plus `scripts/build-manifests.ts`: produce `manifest.commands.xml` and `manifest.studio.xml`, both pointing at GitHub Pages URLs
-  - `src/commands/commands.ts`: handlers for buttons that run without a task pane (match size, swap, sticky note, …)
-  - `src/taskpane/`: one React app with a view per pane: Shapes, Layout, Brand, Utilities, Check, Diagnostics
-  - `src/lib/ppt.ts`: thin wrappers around `PowerPoint.run` (getSelectedShapes, add shape, tags, select)
-  - `src/lib/layout.ts`: pure geometry math (unit tested)
-  - `src/lib/shapeRecipe.ts`: captures a shape to JSON and rebuilds it (unit tested)
-  - `src/lib/storage.ts`: IndexedDB plus JSON export/import
-  - `src/lib/quality.ts`: deck-check rules (pure, unit tested)
-  - `src/lib/capabilities.ts`: checks which API versions are supported and gates features
-  - `assets/`: icons at 16/32/80 px (the ribbon needs PNGs)
-  - `.github/workflows/deploy.yml`: lint → test → build → validate manifest → deploy to Pages
-  - `docs/INSTALL.md`: step-by-step install with screenshots, no Terminal needed
+  - `manifests/ribbon.mjs`: the single definition of both tabs (groups, buttons, built-in controls). `scripts/build-manifests.mjs` generates `manifest-build.xml` and `manifest-polish.xml` from it.
+  - `manifests/icons.mjs` plus `scripts/build-icons.mjs`: ribbon icon artwork, rendered to PNG at 16/32/64/80 px
+  - `manifests/office-control-ids.mjs`: the built-in control IDs Retro uses, checked against Microsoft's published list
+  - `src/taskpane/`: one React app with a section bar and a view per section: Shapes, Photos, Layout, Brand, Tools, Check, More (Diagnostics)
+  - `src/commands/commands.ts`: handlers for buttons that run without the pane (from Phase 2)
+  - `src/lib/`: `capabilities.ts` (API version checks), `diagnostics.ts`, `idb.ts` (IndexedDB storage); later `layout.ts`, `shapeRecipe.ts`, `photos.ts`, `quality.ts`, all unit tested
+  - `install.html`: the install page served next to the add-in, with download buttons for both manifests
+  - `.github/workflows/ci.yml`: lint → typecheck → test → build → Microsoft manifest validation on every PR; deploy to GitHub Pages on `main`
 
-## Ribbon: two tabs, nothing dropped (exact split finalised in Design)
-**Office limits:** each add-in can have only **one** custom tab, and each group holds at most 6 controls (a dropdown menu counts as one control and can hold many items). Two tabs therefore means **two manifests** (`manifest.commands.xml` and `manifest.studio.xml`) for the same hosted code. Both are installed with the same copy into the `wef` folder. Because both load from the same site, they **share storage**: one shape library, one brand kit. **Rule:** a feature never gets cut for lack of space. It moves to the other tab, into a dropdown menu, or into a task pane.
+## Ribbon: two tabs grouped by workflow
+**Office limits:** each add-in can have only **one** custom tab, and each group holds at most 6 controls (a dropdown menu counts as one). Two tabs therefore means **two manifests** for the same hosted code, both installed with one copy into the `wef` folder. Because both load from the same site, they **share storage**: one shape library, one brand kit. **Rule:** a feature never gets cut for lack of space. It moves to the other tab, into a dropdown menu, or into the task pane.
 
-**Tab 1, "Retro" (everyday commands)**
-1. **Arrange** (built-in): Align ▾, Distribute H/V, Group/Ungroup, Bring to Front/Send to Back, Rotate ▾, Selection Pane
-2. **Layout+** (custom): Match Width · Match Height · Match Size · Swap Positions · Distribute with Gap… · Exact Size/Position… (opens the pane)
-3. **Text** (built-in): Font Size +/−, Bold, Bullets, Line Spacing, Text Box options
-4. **Insert** (built-in): Shapes, Text Box, Table, Picture, Icons
-5. **Format** (built-in): Format Painter, Shape Fill, Shape Outline, Crop
+Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by workflow rather than by where a button comes from.
 
-**Tab 2, "Retro Studio" (your own tools)**
-6. **My Shapes** (custom): Open Library · Save Selection to Library · Recent ▾
-7. **Brand** (custom): Brand Kit pane · Quick-apply Fill 1/2/3 · Apply Fonts
-8. **Slide Tools** (custom): Sticky Note · DRAFT Stamp · Remove All Stickies · Tracker ▾
-9. **Check** (custom): Deck Check · Diagnostics · Backup ▾
+**Retro Build: make, note and arrange content**
+1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
+2. **Shapes:** Shapes gallery (B) · My Library (R) · Save to Library (R) · Recent ▾ (R) · Icons (B)
+3. **Insert:** Photos (R) · Text Box (B) · Table (B) · Picture (B)
+4. **Text:** Font Size Up/Down, Bold, Bullets, Line Spacing, Font Color (all B, icon-only)
+5. **Arrange:** Align & Distribute ▾, Group ▾, Rotate ▾, Selection Pane, Bring to Front, Send to Back (all B)
+6. **Size & Position:** Match Width · Match Height · Match Size · Swap Positions · Gap Distribute… · Exact Size… (all R)
 
-Control IDs (from the OfficeDev/office-control-ids list) get checked on your Mac in Phase 2. If a built-in control doesn't render on Mac, its group falls back to a version I write in Office.js; align and distribute are easy to rebuild that way.
+**Retro Polish: style and review it**
+1. **Format:** Format Painter, Shape Fill, Shape Outline, Crop (all B)
+2. **Brand:** Brand Kit · Fill 1 / 2 / 3 · Apply Fonts (all R)
+3. **Review:** Deck Check · Tracker ▾ (R)
+4. **Retro:** Diagnostics · Backup ▾ (R)
+
+Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids). "Text Box Options" isn't on that list, so **Font Color** takes its slot. Phase 1 confirms on your Mac which built-in buttons actually render; any that don't get a Retro-built replacement.
 
 ## Features
 
@@ -72,6 +71,14 @@ Control IDs (from the OfficeDev/office-control-ids list) get checked on your Mac
 - **Library pane:** search, categories, favourites, drag to reorder, rename or delete, export/import.
 - **Phase 3 starts with a short test on your actual PowerPoint version** to confirm which shape properties can be read back. The recipe-versus-snippet split above is adjusted to whatever that test shows.
 
+### Photos (licensed photo picker)
+- **Source:** one folder you choose: local, or OneDrive / Box through their Finder-synced folders (no sign-in or IT approval). Subfolders become filters. **Change** switches folders.
+- **Scale (2,000+ photos):** Retro stores a small preview of each photo in IndexedDB (~60 MB for 2,500) and reads the full-size file only when inserting. Rescans pick up new or changed files.
+- **Placement:** Full bleed (cover the slide), Fill box (replace the selected shape at its size and position), Background (API 1.10; older versions get a full bleed sent to back), Insert as-is. Crop from Top / Center / Bottom. Retro crops and downsizes to slide resolution before inserting, so decks stay small.
+- **Reconnect:** after PowerPoint restarts, browsing works straight away; inserting full-size photos may need one click on **Reconnect** (re-confirm the same folder in Finder). Phase 4 tests whether this can be avoided.
+- **Folder picking:** if PowerPoint's add-in window doesn't allow choosing a folder, the fallback is selecting all photos in the folder (⌘A) in the same Finder dialog. Phase 1 Diagnostics tests this.
+- **Licensing:** all photos are cleared for use, so no credit or expiry tracking.
+
 ### Layout tools
 Match width, height or size (to the first or last shape selected), swap positions, distribute with a fixed gap in points or cm, nudge by an exact amount, set exact X/Y/W/H for several shapes at once. All the geometry is pure functions in `layout.ts`.
 
@@ -79,7 +86,7 @@ Match width, height or size (to the first or last shape selected), swap position
 Saved palette (hex values, with a "pick from selected shape" option) and saved heading and body fonts. One-click apply to fill, outline or text. Supports several kits (for example, Company, Client A).
 
 ### Slide utilities
-- **Sticky Note and DRAFT stamp:** shapes tagged with `retro:sticky` using the tags API, so **Remove All Stickies** can strip them before you send a deck out.
+- **Sticky Note and DRAFT stamp:** shapes tagged with `retro:sticky` using the tags API, so **Remove All** can strip them before you send a deck out.
 - **Tracker/agenda builder:** you assign slides to sections (stored in tags). It generates an agenda slide and a section tracker bar on each slide, highlighting the current section. *Refresh* rebuilds them.
 
 ### Deck quality check
@@ -91,18 +98,18 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
 ---
 
 ## Delivery phases
-0. **Design (next step after this plan):** in Claude Design, mock up the ribbon tab and each task pane in light and dark mode. You approve before any code is written.
-1. **Skeleton + pipeline + restriction test:** make the repo public, set up the GitHub Actions deploy to Pages, and ship both manifests (two tabs, mostly placeholder buttons) plus the Diagnostics pane. This also checks that two sideloaded add-ins and shared storage work under your company's policies. **Checkpoint:** you install it and send me the Diagnostics report. This tells us which restrictions really apply.
-2. **Ribbon commands + Layout+.**
-3. **Shape library:** the capability test first, then the full feature.
-4. **Brand kit.**
-5. **Slide utilities.**
-6. **Deck quality check.**
+0. **Design:** done. Canvas "Retro Tab UI" (ribbon tabs, all task panes, light and dark).
+1. **Skeleton + pipeline + restriction test:** both tabs (built-in buttons working, Retro buttons open the pane), the shared task pane with Diagnostics, the install page, CI and GitHub Pages deploy. **Checkpoint:** you install it and send me the Diagnostics report, including the folder-picking test.
+2. **Notes + Size & Position:** stickies, stamps, Remove All; Match Width/Height/Size, Swap, Gap Distribute, Nudge, Exact Size.
+3. **Shape library:** the capability test first, then the full feature, plus Backup/Restore.
+4. **Photos.**
+5. **Brand kit.**
+6. **Section tracker + Deck check.**
 
 Each phase is its own PR with a short manual test checklist for your Mac.
 
 ## Verification
 - **CI on every PR:** `eslint`, `tsc --noEmit`, `vitest` (layout math, recipe save/rebuild, quality rules and storage export/import, using a mocked `PowerPoint` namespace), `vite build`, and `office-addin-manifest validate` run on both generated manifests. There's also a test that fails if any group has more than 6 controls or either manifest has more than one custom tab.
 - **Task pane UI:** rendered here in headless Chromium with a stubbed Office.js. Screenshots go in each PR.
-- **On your Mac (can't be automated here):** a checklist per phase. Phase 1's checklist: the tab appears, Diagnostics opens, and you paste the report back to me. Later phases add one checkbox per button or feature.
+- **On your Mac (can't be automated here):** a checklist per phase. Phase 1's checklist: both tabs appear, their built-in buttons work, Diagnostics opens from both tabs, and you paste the report back to me. Later phases add one checkbox per button or feature.
 - **Deploy check:** after merge, the Pages URL serves `taskpane.html` and the icons with HTTP 200.
