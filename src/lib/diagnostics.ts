@@ -68,7 +68,13 @@ export function summarize(checks: Check[], requirements: RequirementResult[]): {
 
 const MARK: Record<Status, string> = { ok: "OK  ", warn: "WARN", fail: "FAIL", pending: "...." };
 
-export function formatReport(env: Environment, requirements: RequirementResult[], checks: Check[], now = new Date()): string {
+export function formatReport(
+  env: Environment,
+  requirements: RequirementResult[],
+  checks: Check[],
+  now = new Date(),
+  activity: string[] = [],
+): string {
   const lines = [
     `Retro diagnostics report — ${now.toISOString()}`,
     "",
@@ -84,6 +90,9 @@ export function formatReport(env: Environment, requirements: RequirementResult[]
     "",
     "Company setup checks:",
     ...checks.map((c) => `  ${MARK[c.status]} ${c.label}: ${c.detail}`),
+    "",
+    "Recent Retro actions (oldest first):",
+    ...(activity.length ? activity.map((a) => `  ${a}`) : ["  none yet"]),
   ];
   return lines.join("\n");
 }

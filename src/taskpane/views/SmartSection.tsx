@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Field, Input, Text } from "@fluentui/react-components";
+import { activity, describeError } from "../../lib/activity";
 import { UserError } from "../../lib/ppt";
 import { insertSmart, renumberSlide, SMART, SMART_KINDS, updateSmart, type SmartKind } from "../../lib/smart";
 import { pane } from "../store";
@@ -8,10 +9,10 @@ import { useSmartSelection } from "../useSmartSelection";
 
 async function report(work: () => Promise<void>) {
   try {
-    await work();
+    await activity.track("pane smart element", work);
     pane.showMessage(undefined);
   } catch (e) {
-    pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof Error ? e.message : String(e) });
+    pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof UserError ? e.message : describeError(e) });
   }
 }
 

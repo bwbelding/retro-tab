@@ -8,6 +8,7 @@ import {
   FolderOpenRegular,
   WarningRegular,
 } from "@fluentui/react-icons";
+import { activity as activityLog, formatActivity, type ActivityEntry } from "../../lib/activity";
 import { kv } from "../../lib/idb";
 import { officeIsSetSupported, probeRequirements } from "../../lib/capabilities";
 import {
@@ -100,6 +101,7 @@ export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
     detail: "Not tested yet. Click “Test folder picking” and choose any folder with photos in it.",
   });
   const [copied, setCopied] = useState<"" | "copied" | "manual">("");
+  const [recent, setRecent] = useState<ActivityEntry[]>([]);
   const folderInput = useRef<HTMLInputElement>(null);
 
   const run = useCallback(async () => {
@@ -107,6 +109,7 @@ export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
     const other = tab === "build" ? "polish" : "build";
     const results = await Promise.all([checkPowerPoint(), checkStorage(kv), checkSharedStorage(kv, tab, other), checkHosting()]);
     setChecks(results);
+    setRecent(await activityLog.read());
   }, [tab]);
 
   useEffect(() => {
@@ -122,7 +125,7 @@ export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
 
   const allChecks = checks.length ? [...checks, folder] : [];
   const summary = summarize(allChecks.length ? allChecks : [{ id: "x", label: "", status: "pending", detail: "" }], requirements);
-  const report = formatReport(env, requirements, allChecks);
+  const report = formatReport(env, requirements, allChecks, new Date(), formatActivity(recent));
 
   const copy = async () => {
     try {
@@ -223,6 +226,38 @@ export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
         <Text size={200} className={styles.muted}>
           Backup and restore arrive with the shape library in Phase 3.
         </Text>
+      </div>
+
+      <div className={styles.section}>
+        <Text as="h3" weight="semibold" className={styles.heading}>
+          Recent Retro actions
+        </Text>
+        {recent.length === 0 ? (
+          <Text size={200} className={styles.muted}>
+            None yet. Buttons you press are listed here, so problems show up in the report.
+          </Text>
+        ) : (
+          <div>
+            {[...recent]
+              .reverse()
+              .slice(0, 10)
+              .map((e, i) => (
+                <div key={`${e.at}${i}`} className={styles.row}>
+                  <StatusIcon status={e.status === "ok" ? "ok" : e.status === "error" ? "fail" : "warn"} />
+                  <span>
+                    <b>{e.action}</b> <span className={styles.muted}>{new Date(e.at).toLocaleTimeString()}{e.ms !== undefined ? ` · ${e.ms} ms` : ""}</span>
+                    {e.status === "started" && <span className={styles.muted}> · started, no finish recorded yet</span>}
+                    {e.detail && (
+                      <>
+                        <br />
+                        <span className={styles.muted}>{e.detail}</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
 
       {copied === "manual" && (

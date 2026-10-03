@@ -1,6 +1,7 @@
 // What each Retro ribbon button does. Registered with Office.actions.associate in the shared
 // runtime, so buttons act in one click; the pane only opens to show a result or a problem.
 
+import { activity, describeError } from "../lib/activity";
 import { matchSize, swapPositions, type Dimension } from "../lib/layout";
 import { addStamp, addSticky, scanNotes, type StampLabel } from "../lib/notes";
 import { applyRects, requireSelection, selectedShapes, UserError } from "../lib/ppt";
@@ -100,12 +101,12 @@ export const ACTIONS: Record<ActionName, Action> = {
   },
 };
 
-/** Run an action for a ribbon button, reporting problems in the pane. */
-export async function runAction(action: Action): Promise<void> {
+/** Run an action for a ribbon button, logging it and reporting problems in the pane. */
+export async function runAction(name: string, action: Action): Promise<void> {
   try {
-    await action.run();
+    await activity.track(`ribbon ${name}`, action.run);
   } catch (e) {
-    const text = e instanceof UserError ? e.message : `That didn't work: ${e instanceof Error ? e.message : String(e)}`;
+    const text = e instanceof UserError ? e.message : `That didn't work: ${describeError(e)}`;
     await pane.open(action.view, { intent: e instanceof UserError ? "warning" : "error", text });
   }
 }
@@ -113,7 +114,7 @@ export async function runAction(action: Action): Promise<void> {
 export function registerActions(): void {
   for (const [name, action] of Object.entries(ACTIONS)) {
     Office.actions.associate(name, (event: Office.AddinCommands.Event) => {
-      void runAction(action).finally(() => event.completed());
+      void runAction(name, action).finally(() => event.completed());
     });
   }
 }
