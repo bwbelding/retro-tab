@@ -57,7 +57,7 @@ export interface Capture {
   recipe: Recipe;
   /** The exported slide (.pptx, base64), still carrying the capture tags, for the helper-slide route. */
   pptx: string;
-  /** How many selected shapes were found in the exported file. */
+  /** How many selected shapes were found on the exported slide (not inside a group). */
   found: number;
   selected: number;
   exportMs: number;
@@ -226,7 +226,8 @@ export async function captureShapes(context: PowerPoint.RequestContext, slide: P
   return {
     recipe: { version: 1, box: nodes.length ? boundsOf(nodes) : { left: 0, top: 0, width: 0, height: 0 }, nodes },
     pptx,
-    found: tops.filter((n) => topLevel.has(n.cid!)).length,
+    // Shapes picked from inside a group don't count: they can't be copied on their own.
+    found: tops.filter((n) => topLevel.has(n.cid!) && parsed.nodes.includes(n)).length,
     selected: live.length,
     exportMs,
   };
@@ -408,7 +409,7 @@ export async function insertHelperSlide(context: PowerPoint.RequestContext, pptx
   await context.sync();
   const helper = now.items.find((s) => !existing.has(s.id));
   if (!helper) throw new Error("PowerPoint didn't add the helper slide.");
-  helper.tags.add(HELPER_TAG, "1");
+  helper.tags.add(HELPER_TAG, after); // the slide to go back to
   const shapes = helper.shapes;
   shapes.load("items/id");
   await context.sync();
@@ -422,7 +423,9 @@ export async function insertHelperSlide(context: PowerPoint.RequestContext, pptx
       s.tags.delete(CAPTURE_TAG);
     }
   });
+  if (keep.length === 0) helper.delete();
   await context.sync();
+  if (keep.length === 0) throw new Error("The saved shapes weren't on the helper slide, so it was removed. Save them again as whole shapes or groups.");
   context.presentation.setSelectedSlides([helper.id]);
   await context.sync();
   helper.setSelectedShapes(keep);

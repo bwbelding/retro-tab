@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { base64ToBytes, bytesToBase64, openZip } from "../src/lib/zip";
+import { base64ToBytes, bytesToBase64, openZip, writeZip } from "../src/lib/zip";
 import { makeZip } from "./helpers/makeZip";
 
 describe("zip reader", () => {
@@ -20,5 +20,16 @@ describe("zip reader", () => {
   it("round-trips base64", () => {
     const bytes = new Uint8Array(70000).map((_, i) => i % 256);
     expect(Array.from(base64ToBytes(bytesToBase64(bytes)))).toEqual(Array.from(bytes));
+  });
+});
+
+describe("zip writer", () => {
+  it("copies entries into a new zip that reads back the same", async () => {
+    const source = openZip(await makeZip({ "a.xml": "<a>hello</a>", "b.bin": new Uint8Array([9, 8, 7]) }));
+    const copy = openZip(writeZip(source.names.map((n) => source.raw(n)!)));
+    expect(copy.names).toEqual(["a.xml", "b.bin"]);
+    expect(await copy.text("a.xml")).toBe("<a>hello</a>");
+    expect(Array.from((await copy.bytes("b.bin"))!)).toEqual([9, 8, 7]);
+    expect(copy.raw("a.xml")).toMatchObject({ method: 8, size: 12 });
   });
 });
