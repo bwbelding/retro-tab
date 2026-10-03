@@ -34,7 +34,9 @@ export function iconsUsed(addin) {
 export function buildManifest(addin, { baseUrl = DEFAULT_BASE_URL, version = "0.0.0" } = {}) {
   const base = baseUrl.replace(/\/$/, "");
   const origin = new URL(base).origin;
-  const runtimeUrl = `${base}/taskpane.html?tab=${addin.key}`;
+  // The version in the address makes PowerPoint fetch the new page when the manifest changes,
+  // instead of reusing a cached copy (GitHub Pages lets browsers cache pages for 10 minutes).
+  const runtimeUrl = `${base}/taskpane.html?tab=${addin.key}&v=${encodeURIComponent(version)}`;
 
   // Resource ids are limited to 32 characters, so they're short and sequential.
   const shortStrings = [];

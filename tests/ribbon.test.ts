@@ -77,7 +77,7 @@ describe.each(ADDINS)("$name manifest", (addin) => {
     expect(xml).toContain('<Runtime resid="Taskpane.Url" lifetime="long"/>');
     expect(xml).toContain('<FunctionFile resid="Taskpane.Url"/>');
     expect(xml).toContain('<Set Name="SharedRuntime" MinVersion="1.1"/>');
-    expect(xml).toContain(`<bt:Url id="Taskpane.Url" DefaultValue="https://example.github.io/retro-tab/taskpane.html?tab=${addin.key}"/>`);
+    expect(xml).toContain(`<bt:Url id="Taskpane.Url" DefaultValue="https://example.github.io/retro-tab/taskpane.html?tab=${addin.key}&amp;v=1.2.3"/>`);
     expect(xml).not.toContain("ShowTaskpane");
   });
 
