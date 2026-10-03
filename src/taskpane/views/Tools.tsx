@@ -5,7 +5,8 @@ import { addStamp, addSticky, scanNotes, STAMPS, STICKY_COLORS, type NoteCount, 
 import { activity, describeError } from "../../lib/activity";
 import { selectedShapes, UserError } from "../../lib/ppt";
 import { pane } from "../store";
-import { SmartSection } from "./SmartSection";
+import { useSmartSelection } from "../useSmartSelection";
+import { SmartEditor, SmartInsert } from "./SmartSection";
 import { Section, Seg, useUi } from "../ui";
 
 const useStyles = makeStyles({
@@ -56,8 +57,11 @@ export function Tools() {
 
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
+  const smart = useSmartSelection();
+
   return (
     <>
+      {smart.selected && <SmartEditor selected={smart.selected} refresh={smart.refresh} />}
       <Section title="Sticky note">
         <Field label="Note">
           <Textarea value={text} placeholder="Check this number with finance" onChange={(_, d) => setText(d.value)} resize="vertical" />
@@ -146,7 +150,7 @@ export function Tools() {
         </Text>
       </Section>
 
-      <SmartSection />
+      <SmartInsert hasSelection={Boolean(smart.selected)} refresh={smart.refresh} />
 
       <Section title="Section tracker">
         <Text size={200} className={ui.muted}>
