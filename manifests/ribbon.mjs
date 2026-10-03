@@ -49,8 +49,9 @@ export const ADDINS = [
         id: "Shapes",
         label: "Shapes",
         icon: "library",
+        // Retro's buttons first and PowerPoint's last: PowerPoint for Mac picks button sizes itself and
+        // shows built-in controls small, so this keeps large buttons on the left of each group.
         controls: [
-          { office: "ShapesInsertGallery" },
           { id: "ShapeLibrary", label: "My Library", tip: "Browse and insert your saved shapes.", icon: "library", view: "shapes" },
           { id: "SaveShape", label: "Save to Library", tip: "Save the selected shapes to your library.", icon: "saveShape", view: "shapes" },
           {
@@ -60,6 +61,7 @@ export const ADDINS = [
             icon: "recent",
             menu: [{ id: "RecentOpen", label: "Show recent shapes", tip: "Open the library at Recent.", icon: "recent", view: "shapes" }],
           },
+          { office: "ShapesInsertGallery" },
         ],
       },
       {
@@ -139,10 +141,10 @@ export const ADDINS = [
         icon: "brandKit",
         controls: [
           { id: "BrandKit", label: "Brand Kit", tip: "Your brand colors and fonts.", icon: "brandKit", view: "brand" },
+          { id: "ApplyFonts", label: "Apply Fonts", tip: "Apply brand heading and body fonts.", icon: "applyFonts", view: "brand" },
           { id: "Fill1", label: "Fill 1", tip: "Fill the selection with brand color 1.", icon: "fill1", view: "brand" },
           { id: "Fill2", label: "Fill 2", tip: "Fill the selection with brand color 2.", icon: "fill2", view: "brand" },
           { id: "Fill3", label: "Fill 3", tip: "Fill the selection with brand color 3.", icon: "fill3", view: "brand" },
-          { id: "ApplyFonts", label: "Apply Fonts", tip: "Apply brand heading and body fonts.", icon: "applyFonts", view: "brand" },
         ],
       },
       {

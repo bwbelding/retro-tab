@@ -22,6 +22,14 @@ describe("ribbon definition", () => {
     for (const g of addin.groups) expect(g.controls.length, g.label).toBeLessThanOrEqual(MAX_CONTROLS_PER_GROUP);
   });
 
+  it.each(ADDINS)("$name puts Retro's buttons before PowerPoint's in every group", (addin) => {
+    // PowerPoint for Mac shows built-in controls small, so this keeps large buttons on the left.
+    for (const g of addin.groups) {
+      const kinds = (g.controls as Control[]).map((c) => (c.office ? "office" : "retro"));
+      expect(kinds.join(","), g.label).toBe([...kinds].sort((a, b) => (a === b ? 0 : a === "retro" ? -1 : 1)).join(","));
+    }
+  });
+
   it.each(ADDINS)("$name uses only known built-in control IDs, marking unconfirmed ones as trials", (addin) => {
     const office = addin.groups.flatMap((g) => g.controls as Control[]).filter((c) => c.office);
     for (const c of office) {

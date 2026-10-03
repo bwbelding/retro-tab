@@ -43,11 +43,11 @@ The repo (`bwbelding/retro-tab`) is empty apart from a README and LICENSE.
 ## Ribbon: two tabs grouped by workflow
 **Office limits:** each add-in can have only **one** custom tab, and each group holds at most 6 controls (a dropdown menu counts as one). Two tabs therefore means **two manifests** for the same hosted code, both installed with one copy into the `wef` folder. Because both load from the same site, they **share storage**: one shape library, one brand kit. **Rule:** a feature never gets cut for lack of space. It moves to the other tab, into a dropdown menu, or into the task pane.
 
-Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by workflow rather than by where a button comes from.
+Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by workflow rather than by where a button comes from. Within a group, large buttons go on the left and small ones on the right: PowerPoint for Mac sizes buttons itself and shows built-in ones small, so Retro's buttons always come first (a test enforces this).
 
 **Retro Build: make, note and arrange content**
 1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
-2. **Shapes:** Shapes gallery (B) · My Library (R) · Save to Library (R) · Recent ▾ (R)
+2. **Shapes:** My Library (R) · Save to Library (R) · Recent ▾ (R) · Shapes gallery (B)
 3. **Insert:** Photos (R) · Text Box (B) · Table (B) · Picture (B)
 4. **Text:** Font Size Up/Down, Bold, Bullets, Line Spacing, Font Color (all B, icon-only)
 5. **Arrange:** Align & Distribute ▾, Group ▾, Rotate ▾, Selection Pane, Bring to Front, Send to Back (all B)
@@ -55,7 +55,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by 
 
 **Retro Polish: style and review it**
 1. **Format:** Format Painter, Shape Fill, Shape Outline, Crop (all B)
-2. **Brand:** Brand Kit · Fill 1 / 2 / 3 · Apply Fonts (all R)
+2. **Brand:** Brand Kit · Apply Fonts · Fill 1 / 2 / 3 (all R)
 3. **Review:** Deck Check · Tracker ▾ (R)
 4. **Retro:** Diagnostics · Backup ▾ (R)
 
