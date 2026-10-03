@@ -47,7 +47,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by 
 
 **Retro Build: make, note and arrange content**
 1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
-2. **Shapes:** Shapes gallery (B) · My Library (R) · Save to Library (R) · Recent ▾ (R) · Icons (B)
+2. **Shapes:** Shapes gallery (B) · My Library (R) · Save to Library (R) · Recent ▾ (R)
 3. **Insert:** Photos (R) · Text Box (B) · Table (B) · Picture (B)
 4. **Text:** Font Size Up/Down, Bold, Bullets, Line Spacing, Font Color (all B, icon-only)
 5. **Arrange:** Align & Distribute ▾, Group ▾, Rotate ▾, Selection Pane, Bring to Front, Send to Back (all B)
@@ -59,7 +59,9 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by 
 3. **Review:** Deck Check · Tracker ▾ (R)
 4. **Retro:** Diagnostics · Backup ▾ (R)
 
-Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids). "Text Box Options" isn't on that list, so **Font Color** takes its slot. Phase 1 confirms on your Mac which built-in buttons actually render; any that don't get a Retro-built replacement.
+Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids), checked on PowerPoint for Mac 16.113. "Text Box Options" isn't on that list, so **Font Color** takes its slot. Mac differences found in testing: Font Size Down needs the standard ID `FontSizeDecrease` (the list's `FontSizeDecrese` shows nothing); Picture works as `PictureInsertFromFilePowerPoint`; no ID for **Icons** shows on Mac, so Icons stays on PowerPoint's own Insert tab. Built-in buttons that act on a selection are greyed until something is selected, as on the Home tab.
+
+**Ribbon changes need the manifests re-copied:** the buttons live in the two manifest files in the `wef` folder, so a ribbon change means downloading them again. Pane changes deploy on their own. PowerPoint for Mac doesn't keep `wef` add-ins active between launches; IT deployment (Microsoft 365 admin center → Integrated apps) fixes that.
 
 ## Features
 
