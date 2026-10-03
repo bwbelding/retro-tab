@@ -84,7 +84,7 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 ### Smart Elements
 Small editable status graphics made of ordinary PowerPoint shapes, tagged with their kind and value so the pane can change them later. Colours come from the brand kit.
 - **Numbered circle:** each new one takes the next number on the slide; renumber.
-- **Harvey ball:** 0%, 25%, 50%, 75% or 100% only (pie fill uses shape adjustments, PowerPointApi 1.10).
+- **Harvey ball:** 0%, 25%, 50%, 75% or 100% only; 0% is a solid ball and 100% an empty ring (your choice, reversed from the usual convention). Pie fill uses shape adjustments, PowerPointApi 1.10.
 - **Traffic light:** red / amber / green, single dot or three lights.
 - **Progress bar:** any percentage.
 - **Star rating:** 1–5.
