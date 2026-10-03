@@ -6,6 +6,7 @@ import { pane, usePane } from "./store";
 import { VIEWS, type ViewKey } from "./views";
 import { Diagnostics } from "./views/Diagnostics";
 import { Layout } from "./views/Layout";
+import { Photos } from "./views/Photos";
 import { Placeholder } from "./views/Placeholder";
 import { Shapes } from "./views/Shapes";
 import { Tools } from "./views/Tools";
@@ -102,6 +103,8 @@ export function App({ tab }: { tab: "build" | "polish" }) {
           <Tools />
         ) : view === "shapes" ? (
           <Shapes />
+        ) : view === "photos" ? (
+          <Photos />
         ) : (
           <Placeholder view={current} />
         )}

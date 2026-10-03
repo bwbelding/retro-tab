@@ -88,8 +88,8 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 ### Photos (licensed photo picker)
 - **Source:** one folder you choose: local, or OneDrive / Box through their Finder-synced folders (no sign-in or IT approval). Subfolders become filters. **Change** switches folders.
 - **Scale (2,000+ photos):** Retro stores a small preview of each photo in IndexedDB (~60 MB for 2,500) and reads the full-size file only when inserting. Rescans pick up new or changed files.
-- **Placement:** Full bleed (cover the slide), Fill box (replace the selected shape at its size and position), Background (API 1.10; older versions get a full bleed sent to back), Insert as-is. Crop from Top / Center / Bottom. Retro crops and downsizes to slide resolution before inserting, so decks stay small.
-- **Reconnect:** after PowerPoint restarts, browsing works straight away; inserting full-size photos may need one click on **Reconnect** (re-confirm the same folder in Finder). Phase 4 tests whether this can be avoided.
+- **Placement:** Full bleed (a real picture covering the slide, sent to the back), Fill box (fills the selected shape, so circles and rounded boxes work as frames; keeps the shape's position and outline), Background (the slide's own background, API 1.10), As is (uncropped, centered in 80% of the slide). Crop from Top / Center / Bottom; width is trimmed evenly. Retro crops and saves at 2 pixels per point (at most 3000 px) before inserting, so decks stay small. The last placement and crop are remembered.
+- **Reconnect:** browsers can't keep access to a folder, so after PowerPoint restarts the previews show straight away and inserting needs one click on **Reconnect** (choose the same folder in Finder). Reconnecting only re-reads new or changed photos.
 - **Folder picking:** if PowerPoint's add-in window doesn't allow choosing a folder, the fallback is selecting all photos in the folder (⌘A) in the same Finder dialog. Phase 1 Diagnostics tests this.
 - **Licensing:** all photos are cleared for use, so no credit or expiry tracking.
 
