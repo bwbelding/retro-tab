@@ -38,6 +38,8 @@ export const ICONS = {
   backup: stroke(`<path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/>`),
   smart: stroke(`<circle cx="7.5" cy="7.5" r="4.5"/><path d="M7.5 3a4.5 4.5 0 0 1 4.5 4.5H7.5z" fill="currentColor"/><path d="M17 3.5l1.3 2.7 3 .4-2.2 2.1.5 3-2.6-1.4-2.6 1.4.5-3-2.2-2.1 3-.4z"/><rect x="3" y="15" width="18" height="5" rx="2.5"/><rect x="3" y="15" width="10" height="5" rx="2.5" fill="currentColor"/>`),
   smartNumber: `<circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M10 8.5l2.5-1.5v10" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  smartNumberSet: `<circle cx="5" cy="12" r="4" fill="currentColor"/><circle cx="12" cy="12" r="4" fill="currentColor"/><circle cx="19" cy="12" r="4" fill="currentColor"/><path d="M5 10.3v3.4M11 10.6h1.6v2.8M17.7 10.6h1.8l-1.6 2.9" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  smartHarveySet: stroke(`<circle cx="5" cy="12" r="3.6"/><circle cx="12" cy="12" r="3.6"/><path d="M12 8.4a3.6 3.6 0 0 1 0 7.2z" fill="currentColor"/><circle cx="19" cy="12" r="3.6" fill="currentColor"/>`),
   smartHarvey: stroke(`<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9H12z" fill="currentColor"/>`),
   smartTraffic: `<circle cx="12" cy="12" r="9" fill="#1E8E3E"/>`,
   smartTraffic3: `<rect x="7" y="2" width="10" height="20" rx="3" fill="#333F48"/><circle cx="12" cy="6.5" r="2.4" fill="#D93025"/><circle cx="12" cy="12" r="2.4" fill="#F2A900"/><circle cx="12" cy="17.5" r="2.4" fill="#1E8E3E"/>`,

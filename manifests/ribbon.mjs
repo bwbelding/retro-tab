@@ -68,7 +68,9 @@ export const ADDINS = [
             icon: "smart",
             menu: [
               { id: "SmartNumber", label: "Numbered circle", tip: "Next number on this slide.", icon: "smartNumber", run: "insertNumber" },
+              { id: "SmartNumberSet", label: "Numbered circles 1–10", tip: "Ten numbered circles in a row.", icon: "smartNumberSet", run: "insertNumberSet" },
               { id: "SmartHarvey", label: "Harvey ball", tip: "0, 25, 50, 75 or 100%.", icon: "smartHarvey", run: "insertHarvey" },
+              { id: "SmartHarveySet", label: "Harvey balls 0–100%", tip: "All five Harvey balls in a row: 0, 25, 50, 75 and 100%.", icon: "smartHarveySet", run: "insertHarveySet" },
               { id: "SmartTraffic", label: "Traffic light", tip: "Red, amber or green dot.", icon: "smartTraffic", run: "insertTraffic" },
               { id: "SmartTraffic3", label: "Traffic lights (3)", tip: "Three lights with one lit.", icon: "smartTraffic3", run: "insertTraffic3" },
               { id: "SmartProgress", label: "Progress bar", tip: "Any percentage.", icon: "smartProgress", run: "insertProgress" },

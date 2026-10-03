@@ -252,6 +252,44 @@ export function placeFor(kind: SmartKind, slide: { width: number; height: number
   return { left, top: b.top + (b.height - height) / 2, width, height };
 }
 
+/** The values in a full set: every Harvey quarter, or numbered circles 1..count. */
+export function setValues(kind: "number" | "harvey", count = 10): string[] {
+  if (kind === "harvey") return SMART.harvey.choices!.map((c) => c.value);
+  const n = Math.min(20, Math.max(1, Math.round(count)));
+  return Array.from({ length: n }, (_, i) => String(i + 1));
+}
+
+const SET_GAP = 8;
+const SLIDE_MARGIN = 24;
+
+/**
+ * Boxes for a set of elements laid out in a row, wrapping onto more rows when the slide is too
+ * narrow. Placed right of the selection when it fits, otherwise centred on the slide.
+ */
+export function setBoxes(kind: SmartKind, count: number, slide: { width: number; height: number }, selection: Rect[]): Box[] {
+  const { width: w, height: h } = SMART[kind].size;
+  const usable = slide.width - 2 * SLIDE_MARGIN;
+  const perRow = Math.max(1, Math.min(count, Math.floor((usable + SET_GAP) / (w + SET_GAP))));
+  const rows = Math.ceil(count / perRow);
+  const blockW = perRow * w + (perRow - 1) * SET_GAP;
+  const blockH = rows * h + (rows - 1) * SET_GAP;
+  let left = (slide.width - blockW) / 2;
+  let top = (slide.height - blockH) / 2;
+  if (selection.length > 0) {
+    const b = bounds(selection);
+    if (b.left + b.width + SET_GAP + blockW <= slide.width - SLIDE_MARGIN) {
+      left = b.left + b.width + SET_GAP;
+      top = Math.min(Math.max(b.top, SLIDE_MARGIN), slide.height - blockH - SLIDE_MARGIN);
+    }
+  }
+  return Array.from({ length: count }, (_, i) => ({
+    left: left + (i % perRow) * (w + SET_GAP),
+    top: top + Math.floor(i / perRow) * (h + SET_GAP),
+    width: w,
+    height: h,
+  }));
+}
+
 // ---- PowerPoint ----
 
 async function drawPart(context: PowerPoint.RequestContext, shapes: PowerPoint.ShapeCollection, part: Part): Promise<PowerPoint.Shape> {
@@ -348,6 +386,21 @@ export async function insertSmart(kind: SmartKind): Promise<void> {
     const shape = await draw(context, slide, kind, value, box);
     slide.setSelectedShapes([shape.id]);
     await context.sync();
+  });
+}
+
+/** Insert a whole set (Harvey balls 0–100%, or numbered circles 1..count) and select it. */
+export async function insertSmartSet(kind: "number" | "harvey", count = 10): Promise<number> {
+  const values = setValues(kind, count);
+  return PowerPoint.run(async (context) => {
+    const slide = await currentSlide(context);
+    const { rects } = await selectedShapes(context);
+    const boxes = setBoxes(kind, values.length, await slideSize(context), rects);
+    const ids: string[] = [];
+    for (let i = 0; i < values.length; i++) ids.push((await draw(context, slide, kind, values[i], boxes[i])).id);
+    slide.setSelectedShapes(ids);
+    await context.sync();
+    return ids.length;
   });
 }
 
