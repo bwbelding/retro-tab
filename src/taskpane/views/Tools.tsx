@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Field, Text, Textarea, makeStyles, tokens } from "@fluentui/react-components";
 import { EraserRegular } from "@fluentui/react-icons";
 import { addStamp, addSticky, scanNotes, STAMPS, STICKY_COLORS, type NoteCount, type StampLabel, type StickyColor } from "../../lib/notes";
+import { activity, describeError } from "../../lib/activity";
 import { selectedShapes, UserError } from "../../lib/ppt";
 import { pane } from "../store";
 import { SmartSection } from "./SmartSection";
@@ -26,10 +27,10 @@ const COLOR_NAMES: Record<StickyColor, string> = { yellow: "Yellow", pink: "Pink
 
 async function report(work: () => Promise<string | void>) {
   try {
-    const text = await work();
+    const text = await activity.track("pane tools", work);
     pane.showMessage(text ? { intent: "success", text } : undefined);
   } catch (e) {
-    pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof Error ? e.message : String(e) });
+    pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof UserError ? e.message : describeError(e) });
   }
 }
 

@@ -67,3 +67,16 @@ describe("formatReport", () => {
     expect(text).toContain("OK   Saving on this Mac: Works.");
   });
 });
+
+describe("activity log", () => {
+  it("keeps the newest entries and formats them for the report", async () => {
+    const { appendEntry, formatActivity, describeError } = await import("../src/lib/activity");
+    let log: Parameters<typeof appendEntry>[0] = [];
+    for (let i = 0; i < 30; i++) log = appendEntry(log, { at: `2026-10-03T19:00:${String(i).padStart(2, "0")}.000Z`, action: `a${i}`, status: "ok", ms: i });
+    expect(log).toHaveLength(25);
+    expect(log[0].action).toBe("a5");
+    const err = Object.assign(new Error("InvalidArgument"), { code: "InvalidArgument", debugInfo: { errorLocation: "Adjustments.set" } });
+    const line = formatActivity([{ at: "2026-10-03T19:00:01.000Z", action: "ribbon insertHarvey", status: "error", ms: 40, detail: describeError(err) }])[0];
+    expect(line).toBe("19:00:01 ERROR   ribbon insertHarvey (40 ms) — InvalidArgument · at Adjustments.set");
+  });
+});
