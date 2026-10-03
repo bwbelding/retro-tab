@@ -63,7 +63,7 @@ function compareNode(where: string, a: RecipeNode, b: RecipeNode, dx: number, dy
   const fb = b.look.fill;
   if (fa && fb && !pictureAsShape) {
     if (fa.type !== fb.type) out.push(`${where}: fill ${fa.type} came back ${fb.type}`);
-    else if (fa.color?.toUpperCase() !== fb.color?.toUpperCase()) out.push(`${where}: fill colour ${fa.color} came back ${fb.color}`);
+    else if (fa.color?.toUpperCase() !== fb.color?.toUpperCase()) out.push(`${where}: fill color ${fa.color} came back ${fb.color}`);
     if (!close(fa.transparency, fb.transparency, 0.01)) out.push(`${where}: fill transparency ${fa.transparency} came back ${fb.transparency}`);
   }
   const la = a.look.line;
@@ -71,7 +71,7 @@ function compareNode(where: string, a: RecipeNode, b: RecipeNode, dx: number, dy
   if (la && lb) {
     if (la.visible !== lb.visible) out.push(`${where}: outline ${la.visible ? "lost" : "added"}`);
     else if (la.visible) {
-      if (la.color?.toUpperCase() !== lb.color?.toUpperCase()) out.push(`${where}: outline colour ${la.color} came back ${lb.color}`);
+      if (la.color?.toUpperCase() !== lb.color?.toUpperCase()) out.push(`${where}: outline color ${la.color} came back ${lb.color}`);
       if (!close(la.weight, lb.weight, 0.05)) out.push(`${where}: outline weight ${la.weight} came back ${lb.weight}`);
       if (la.dash !== lb.dash) out.push(`${where}: outline dashes ${la.dash} came back ${lb.dash}`);
     }

@@ -35,7 +35,7 @@ export const API_GEOMETRIES = new Set<string>([
   "ChartStar", "ChartPlus",
 ]);
 
-/** OOXML names that don't simply capitalise to the API name. */
+/** OOXML names that don't simply capitalize to the API name. */
 const RENAMED: Record<string, string> = {
   lineInv: "LineInverse",
   rtTriangle: "RightTriangle",

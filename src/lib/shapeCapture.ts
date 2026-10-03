@@ -1,7 +1,7 @@
 // Captures selected shapes as a "recipe" Retro can rebuild later, and rebuilds them.
 //
 // Capturing combines two sources, because neither has everything:
-//  - PowerPoint's add-in API: colours (with theme colours already resolved), line, fonts,
+//  - PowerPoint's add-in API: colors (with theme colors already resolved), line, fonts,
 //    text settings and shape adjustments, all in the units the API takes back when rebuilding.
 //  - The slide exported as a .pptx: which shape type each one is, flips, how text is split
 //    into runs, embedded pictures, and effects the API can't recreate (see ooxml.ts).

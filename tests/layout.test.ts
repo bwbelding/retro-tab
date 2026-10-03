@@ -47,10 +47,10 @@ describe("matchSize", () => {
 });
 
 describe("swapPositions", () => {
-  it("swaps centres so different sizes trade places", () => {
+  it("swaps centers so different sizes trade places", () => {
     const [a, b] = swapPositions(r("a", 0, 0, 100, 100), r("b", 300, 0, 50, 50));
-    expect(a).toEqual(r("a", 275, -25, 100, 100)); // centre was (325, 25)
-    expect(b).toEqual(r("b", 25, 25, 50, 50)); // centre was (50, 50)
+    expect(a).toEqual(r("a", 275, -25, 100, 100)); // center was (325, 25)
+    expect(b).toEqual(r("b", 25, 25, 50, 50)); // center was (50, 50)
   });
 });
 

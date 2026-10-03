@@ -20,7 +20,7 @@ export const COLORS = {
   red: "#D93025",
   amber: "#F2A900",
   green: "#1E8E3E",
-  grey: "#8C8C8C",
+  gray: "#8C8C8C",
   gold: "#F2B400",
   white: "#FFFFFF",
 } as const;
@@ -127,7 +127,7 @@ const STATUS_COLOR: Record<string, string> = { red: COLORS.red, amber: COLORS.am
 const TREND: Record<string, { rotation: number; color: string }> = {
   up: { rotation: -90, color: COLORS.green },
   "up-slight": { rotation: -45, color: COLORS.green },
-  flat: { rotation: 0, color: COLORS.grey },
+  flat: { rotation: 0, color: COLORS.gray },
   "down-slight": { rotation: 45, color: COLORS.red },
   down: { rotation: 90, color: COLORS.red },
 };
@@ -244,7 +244,7 @@ export function readingOrder<T extends { left: number; top: number; height: numb
   return [...items].sort((a, b) => (Math.abs(a.top - b.top) > Math.min(a.height, b.height) / 2 ? a.top - b.top : a.left - b.left));
 }
 
-/** Where a new element goes: right of the selection, or centred on the slide. */
+/** Where a new element goes: right of the selection, or centered on the slide. */
 export function placeFor(kind: SmartKind, slide: { width: number; height: number }, selection: Rect[]): Box {
   const { width, height } = SMART[kind].size;
   if (selection.length === 0) return { left: (slide.width - width) / 2, top: (slide.height - height) / 2, width, height };
@@ -265,7 +265,7 @@ const SLIDE_MARGIN = 24;
 
 /**
  * Boxes for a set of elements laid out in a row, wrapping onto more rows when the slide is too
- * narrow. Placed right of the selection when it fits, otherwise centred on the slide.
+ * narrow. Placed right of the selection when it fits, otherwise centered on the slide.
  */
 export function setBoxes(kind: SmartKind, count: number, slide: { width: number; height: number }, selection: Rect[]): Box[] {
   const { width: w, height: h } = SMART[kind].size;
@@ -376,7 +376,7 @@ async function numbersOn(context: PowerPoint.RequestContext, slide: PowerPoint.S
     .map((t) => ({ shape: t.shape, value: t.value.isNullObject ? "" : t.value.value }));
 }
 
-/** Insert an element next to the selection (or centred), with its default value. */
+/** Insert an element next to the selection (or centered), with its default value. */
 export async function insertSmart(kind: SmartKind): Promise<void> {
   await PowerPoint.run(async (context) => {
     const slide = await currentSlide(context);

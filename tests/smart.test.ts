@@ -59,7 +59,7 @@ describe("partsFor", () => {
     expect(lights.map((l) => l.fill)).toEqual(["#6B6B6B", "#F2A900", "#6B6B6B"]);
   });
 
-  it("rotates and colours trends", () => {
+  it("rotates and colors trends", () => {
     expect(partsFor("trend", "up", box)[0]).toMatchObject({ shape: "RightArrow", rotation: -90, fill: "#1E8E3E" });
     expect(partsFor("trend", "down-slight", box)[0]).toMatchObject({ rotation: 45, fill: "#D93025" });
     expect(partsFor("trend", "flat", box)[0].rotation).toBe(0);
@@ -103,7 +103,7 @@ describe("numbering", () => {
 });
 
 describe("placeFor", () => {
-  it("centres on the slide without a selection", () => {
+  it("centers on the slide without a selection", () => {
     expect(placeFor("harvey", { width: 960, height: 540 }, [])).toEqual({ left: 468, top: 258, width: 24, height: 24 });
   });
   it("sits right of the selection, inside the slide", () => {
@@ -121,7 +121,7 @@ describe("sets", () => {
     expect(setValues("number", 0)).toEqual(["1"]);
   });
 
-  it("lays a set out in a centred row with even gaps", async () => {
+  it("lays a set out in a centered row with even gaps", async () => {
     const { setBoxes } = await import("../src/lib/smart");
     const boxes = setBoxes("harvey", 5, { width: 960, height: 540 }, []);
     expect(boxes).toHaveLength(5);

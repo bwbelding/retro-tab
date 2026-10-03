@@ -55,11 +55,18 @@ describe("shape library storage", () => {
 
   it("renames, files, stars and records use", async () => {
     const { lib, a } = await saveTwo(memoryStore());
-    await lib.update(a.id, { name: "Big badge", category: "Badges", favourite: true });
+    await lib.update(a.id, { name: "Big badge", category: "Badges", favorite: true });
     await lib.markUsed(a.id);
     const item = (await lib.list()).find((i) => i.id === a.id)!;
-    expect(item).toMatchObject({ name: "Big badge", category: "Badges", favourite: true, uses: 1 });
+    expect(item).toMatchObject({ name: "Big badge", category: "Badges", favorite: true, uses: 1 });
     expect(item.used).toBeDefined();
+  });
+
+  it("reads stars saved by version 1.5.0 under the British spelling", async () => {
+    const store = memoryStore();
+    store.map.set("lib.index", [{ id: "x", name: "Old", category: "", favourite: true, created: "2026-10-03", uses: 0, route: "click", issues: [], box: recipe.box }]);
+    expect((await createLibrary(store).list())[0]).toMatchObject({ name: "Old", favorite: true });
+    expect((await createLibrary(store).list())[0]).not.toHaveProperty("favourite");
   });
 
   it("backs up and restores into another library, skipping items already there", async () => {
@@ -89,11 +96,11 @@ describe("shape library storage", () => {
 });
 
 describe("finding and placing items", () => {
-  const item = (name: string, category: string, favourite: boolean, created: string, used?: string): LibraryItem => ({
+  const item = (name: string, category: string, favorite: boolean, created: string, used?: string): LibraryItem => ({
     id: name,
     name,
     category,
-    favourite,
+    favorite,
     created,
     used,
     uses: used ? 1 : 0,
@@ -107,9 +114,9 @@ describe("finding and placing items", () => {
     item("Step arrow", "Process", false, "2026-01-03", "2026-02-01"),
   ];
 
-  it("sorts most recently used first and filters by search, favourites and category", () => {
+  it("sorts most recently used first and filters by search, favorites and category", () => {
     expect(filterItems(items, "", "all").map((i) => i.name)).toEqual(["Step arrow", "Callout", "Chevron"]);
-    expect(filterItems(items, "", "favourites").map((i) => i.name)).toEqual(["Callout"]);
+    expect(filterItems(items, "", "favorites").map((i) => i.name)).toEqual(["Callout"]);
     expect(filterItems(items, "", "category:Process").map((i) => i.name)).toEqual(["Step arrow", "Chevron"]);
     expect(filterItems(items, "CALL", "all").map((i) => i.name)).toEqual(["Callout"]);
     expect(filterItems(items, "process", "all")).toHaveLength(2);

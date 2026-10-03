@@ -46,7 +46,7 @@ export function matchSize(rects: Rect[], dim: Dimension, ref: Reference = "first
   }));
 }
 
-/** Swap two shapes' positions by their centres, so shapes of different sizes trade places cleanly. */
+/** Swap two shapes' positions by their centers, so shapes of different sizes trade places cleanly. */
 export function swapPositions(a: Rect, b: Rect): [Rect, Rect] {
   const ca = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
   const cb = { x: b.left + b.width / 2, y: b.top + b.height / 2 };

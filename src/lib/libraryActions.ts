@@ -40,7 +40,7 @@ async function makePreview(context: PowerPoint.RequestContext, shapes: PowerPoin
       const f = recipe.nodes[i]?.frame;
       if (!f) continue;
       const pic = await loadImage(`data:image/png;base64,${img.value}`);
-      // Centre each picture on its shape, since rotated shapes render to their turned bounds.
+      // Center each picture on its shape, since rotated shapes render to their turned bounds.
       const cx = (f.left + f.width / 2 - box.left) * scale;
       const cy = (f.top + f.height / 2 - box.top) * scale;
       g.drawImage(pic, cx - pic.width / 2, cy - pic.height / 2);
