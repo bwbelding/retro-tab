@@ -3,10 +3,8 @@
 // Retro uses are listed; add new ones here after checking that list.
 export const OFFICE_CONTROL_IDS = new Set([
   "ShapesInsertGallery",
-  "IconInsertFromFile",
   "TextBoxInsert",
   "TableInsertGallery",
-  "FlyoutAnchorInsertPicture",
   "FontSizeIncrease",
   "FontSizeDecrease", // Published as "FontSizeDecrese", which showed nothing on PowerPoint for Mac.
   "Bold",
@@ -23,4 +21,16 @@ export const OFFICE_CONTROL_IDS = new Set([
   "ShapeFillColorPicker",
   "ShapeOutlineColorPicker",
   "PictureCropTools",
+]);
+
+// Unconfirmed IDs being tried on PowerPoint for Mac because the published ID showed nothing there
+// (Icons: "IconInsertFromFile"; Picture: "FlyoutAnchorInsertPicture"). Mac renders nothing for
+// an ID it doesn't know, so trying several is harmless. Once one is confirmed, move it into
+// OFFICE_CONTROL_IDS and remove the rest.
+export const TRIAL_CONTROL_IDS = new Set([
+  "IconInsert",
+  "IconsInsert",
+  "PictureInsertFromFilePowerPoint",
+  "PictureInsertFromFile",
+  "PicturesInsertMenu",
 ]);

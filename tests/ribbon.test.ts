@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { ADDINS, MAX_CONTROLS_PER_GROUP, VIEWS as RIBBON_VIEWS } from "../manifests/ribbon.mjs";
 import { ICONS } from "../manifests/icons.mjs";
-import { OFFICE_CONTROL_IDS } from "../manifests/office-control-ids.mjs";
+import { OFFICE_CONTROL_IDS, TRIAL_CONTROL_IDS } from "../manifests/office-control-ids.mjs";
 import { buildManifest, iconsUsed } from "../scripts/build-manifests.mjs";
 import { VIEWS } from "../src/taskpane/views";
 import pkg from "../package.json";
 
-type Control = { office?: string; id?: string; view?: string; label?: string; tip?: string; menu?: Control[] };
+type Control = { office?: string; trial?: boolean; id?: string; view?: string; label?: string; tip?: string; menu?: Control[] };
 
 describe("ribbon definition", () => {
   it("defines two add-ins with distinct GUIDs", () => {
@@ -21,9 +21,12 @@ describe("ribbon definition", () => {
     for (const g of addin.groups) expect(g.controls.length, g.label).toBeLessThanOrEqual(MAX_CONTROLS_PER_GROUP);
   });
 
-  it.each(ADDINS)("$name uses only published built-in control IDs", (addin) => {
+  it.each(ADDINS)("$name uses only known built-in control IDs, marking unconfirmed ones as trials", (addin) => {
     const office = addin.groups.flatMap((g) => g.controls as Control[]).filter((c) => c.office);
-    for (const c of office) expect(OFFICE_CONTROL_IDS.has(c.office!), c.office).toBe(true);
+    for (const c of office) {
+      const known = c.trial ? TRIAL_CONTROL_IDS : OFFICE_CONTROL_IDS;
+      expect(known.has(c.office!), c.office).toBe(true);
+    }
   });
 
   it.each(ADDINS)("$name has unique control ids, existing icons and known views", (addin) => {

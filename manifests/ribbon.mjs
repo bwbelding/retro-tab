@@ -5,6 +5,7 @@
 // Control kinds:
 //   { office: "Bold" }                          PowerPoint's own button (OfficeControl).
 //                                               IDs come from github.com/OfficeDev/office-control-ids.
+//   { office: "X", trial: true }                An unconfirmed ID being tried on Mac (see office-control-ids.mjs).
 //   { id, label, tip, icon, view }              Retro button that opens the task pane at `view`.
 //   { id, label, tip, icon, menu: [items] }     Retro dropdown; each item opens the pane at its view.
 
@@ -58,7 +59,10 @@ export const ADDINS = [
             icon: "recent",
             menu: [{ id: "RecentOpen", label: "Show recent shapes", tip: "Open the library at Recent.", icon: "recent", view: "shapes" }],
           },
-          { office: "IconInsertFromFile" },
+          // Trying alternative IDs for Icons: the published "IconInsertFromFile" showed nothing on
+          // PowerPoint for Mac 16.113. IDs Mac doesn't know render nothing; keep whichever appears.
+          { office: "IconInsert", trial: true },
+          { office: "IconsInsert", trial: true },
         ],
       },
       {
@@ -69,7 +73,11 @@ export const ADDINS = [
           { id: "Photos", label: "Photos", tip: "Browse your licensed photo folder.", icon: "photos", view: "photos" },
           { office: "TextBoxInsert" },
           { office: "TableInsertGallery" },
-          { office: "FlyoutAnchorInsertPicture" },
+          // Trying alternative IDs for Picture: the published "FlyoutAnchorInsertPicture" showed nothing
+          // on PowerPoint for Mac 16.113. Keep whichever appears.
+          { office: "PictureInsertFromFilePowerPoint", trial: true },
+          { office: "PictureInsertFromFile", trial: true },
+          { office: "PicturesInsertMenu", trial: true },
         ],
       },
       {
