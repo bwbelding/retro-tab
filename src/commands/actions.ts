@@ -5,6 +5,7 @@ import { matchSize, swapPositions, type Dimension } from "../lib/layout";
 import { addStamp, addSticky, scanNotes, type StampLabel } from "../lib/notes";
 import { applyRects, requireSelection, selectedShapes, UserError } from "../lib/ppt";
 import { prefs } from "../lib/prefs";
+import { insertSmart, renumberSlide, type SmartKind } from "../lib/smart";
 import { pane } from "../taskpane/store";
 import type { ViewKey } from "../taskpane/views";
 import type { ActionName } from "./actionNames";
@@ -35,6 +36,8 @@ const stamp = (label: StampLabel): Action => ({
     await addStamp(label);
   },
 });
+
+const smart = (kind: SmartKind): Action => ({ view: "tools", run: () => insertSmart(kind) });
 
 export const ACTIONS: Record<ActionName, Action> = {
   showShapes: show("shapes"),
@@ -78,6 +81,22 @@ export const ACTIONS: Record<ActionName, Action> = {
         applyRects(shapes, swapPositions(rects[0], rects[1]));
         await context.sync();
       }),
+  },
+  insertNumber: smart("number"),
+  insertHarvey: smart("harvey"),
+  insertTraffic: smart("traffic"),
+  insertTraffic3: smart("traffic3"),
+  insertProgress: smart("progress"),
+  insertStars: smart("stars"),
+  insertCheckbox: smart("checkbox"),
+  insertArrow: smart("arrow"),
+  insertTrend: smart("trend"),
+  renumberCircles: {
+    view: "tools",
+    run: async () => {
+      const n = await renumberSlide();
+      if (n === 0) await pane.open("tools", { intent: "info", text: "There are no numbered circles on this slide." });
+    },
   },
 };
 

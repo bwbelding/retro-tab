@@ -1,6 +1,6 @@
 {
   "name": "retro-tab",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Retro Build and Retro Polish: custom PowerPoint for Mac ribbon tabs (Office.js add-in).",
   "type": "module",

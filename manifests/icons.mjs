@@ -36,6 +36,17 @@ export const ICONS = {
   tracker: stroke(`<rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="5" width="7" height="4" rx="1" fill="currentColor"/><path d="M3 14h18M3 18h12"/>`),
   diagnostics: stroke(`<path d="M3 12h4l2-6 4 12 2-6h6"/>`),
   backup: stroke(`<path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/>`),
+  smart: stroke(`<circle cx="7.5" cy="7.5" r="4.5"/><path d="M7.5 3a4.5 4.5 0 0 1 4.5 4.5H7.5z" fill="currentColor"/><path d="M17 3.5l1.3 2.7 3 .4-2.2 2.1.5 3-2.6-1.4-2.6 1.4.5-3-2.2-2.1 3-.4z"/><rect x="3" y="15" width="18" height="5" rx="2.5"/><rect x="3" y="15" width="10" height="5" rx="2.5" fill="currentColor"/>`),
+  smartNumber: `<circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M10 8.5l2.5-1.5v10" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  smartHarvey: stroke(`<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9H12z" fill="currentColor"/>`),
+  smartTraffic: `<circle cx="12" cy="12" r="9" fill="#1E8E3E"/>`,
+  smartTraffic3: `<rect x="7" y="2" width="10" height="20" rx="3" fill="#333F48"/><circle cx="12" cy="6.5" r="2.4" fill="#D93025"/><circle cx="12" cy="12" r="2.4" fill="#F2A900"/><circle cx="12" cy="17.5" r="2.4" fill="#1E8E3E"/>`,
+  smartProgress: stroke(`<rect x="2" y="9" width="20" height="6" rx="3"/><rect x="2" y="9" width="12" height="6" rx="3" fill="currentColor"/>`),
+  smartStars: stroke(`<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="#F2B400" stroke="#F2B400"/>`),
+  smartCheckbox: stroke(`<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M7.5 12.5l3 3 6-7"/>`),
+  smartArrow: `<path d="M12 2l8 9h-5v11H9V11H4z" fill="currentColor"/>`,
+  smartTrend: stroke(`<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>`),
+  renumber: stroke(`<circle cx="5" cy="6" r="2.5"/><circle cx="5" cy="12" r="2.5"/><circle cx="5" cy="18" r="2.5"/><path d="M10 6h11M10 12h11M10 18h11"/>`),
 };
 
 /** Sizes each icon is rendered at: ribbon sizes plus the add-in icon sizes. */

@@ -4,6 +4,7 @@ import { EraserRegular } from "@fluentui/react-icons";
 import { addStamp, addSticky, scanNotes, STAMPS, STICKY_COLORS, type NoteCount, type StampLabel, type StickyColor } from "../../lib/notes";
 import { selectedShapes, UserError } from "../../lib/ppt";
 import { pane } from "../store";
+import { SmartSection } from "./SmartSection";
 import { Section, Seg, useUi } from "../ui";
 
 const useStyles = makeStyles({
@@ -144,11 +145,7 @@ export function Tools() {
         </Text>
       </Section>
 
-      <Section title="Smart elements">
-        <Text size={200} className={ui.muted}>
-          Numbered circles, Harvey balls, traffic lights, progress bars, stars, checkboxes, arrows and trend indicators arrive in the next update.
-        </Text>
-      </Section>
+      <SmartSection />
 
       <Section title="Section tracker">
         <Text size={200} className={ui.muted}>

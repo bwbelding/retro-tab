@@ -47,7 +47,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by 
 
 **Retro Build: make, note and arrange content**
 1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
-2. **Shapes:** My Library (R) · Save to Library (R) · Recent ▾ (R) · Shapes gallery (B)
+2. **Shapes:** My Library (R) · Save to Library (R) · Recent ▾ (R) · Smart ▾ (R) · Shapes gallery (B)
 3. **Insert:** Photos (R) · Text Box (B) · Table (B) · Picture (B)
 4. **Text:** Font Size Up/Down, Bold, Bullets, Line Spacing, Font Color (all B, icon-only)
 5. **Arrange:** Align & Distribute ▾, Group ▾, Rotate ▾, Selection Pane, Bring to Front, Send to Back (all B)
