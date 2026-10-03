@@ -67,7 +67,7 @@ export function Tools() {
           <Textarea value={text} placeholder="Check this number with finance" onChange={(_, d) => setText(d.value)} resize="vertical" />
         </Field>
         <div className={s.between}>
-          <div className={s.swatches} role="radiogroup" aria-label="Note colour">
+          <div className={s.swatches} role="radiogroup" aria-label="Note color">
             {(Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => (
               <button
                 key={c}

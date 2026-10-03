@@ -19,7 +19,7 @@ The repo (`bwbelding/retro-tab`) is empty apart from a README and LICENSE.
 | Installing the add-in | You copy the two manifest files into `~/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef` using Finder (⌘⇧G to go to the folder), then restart PowerPoint. This is your own user folder, so no admin is needed. |
 | IT has disabled add-ins (`OfficeWebAddinDisableOMEXCatalog`, which also blocks sideloading) | Phase 1 is a tiny test build that tells us right away. Fallbacks: (a) ask IT to deploy the same manifest through Microsoft 365 *Integrated Apps* (a standard request with low effort for them); (b) PowerPoint on the web → Add-ins → Upload My Add-in; (c) a small VBA `.ppam` as a last resort. |
 | Company proxy blocks `*.github.io` | The test build checks this. Fallback: move hosting to Cloudflare Pages (no code changes, only the URLs in the manifest). |
-| PowerPoint version lags behind (managed update channel) | Every feature checks `Office.context.requirements.isSetSupported('PowerPointApi', x)`. Unsupported features appear greyed out with a "needs PowerPoint 16.xx" message instead of failing. Reference: API 1.8 needs Mac version 16.96 or later, 1.9 needs 16.100, 1.10 needs 16.105. |
+| PowerPoint version lags behind (managed update channel) | Every feature checks `Office.context.requirements.isSetSupported('PowerPointApi', x)`. Unsupported features appear grayed out with a "needs PowerPoint 16.xx" message instead of failing. Reference: API 1.8 needs Mac version 16.96 or later, 1.9 needs 16.100, 1.10 needs 16.105. |
 | Your saved data is lost when the Office cache is cleared | The library and brand kit are stored in IndexedDB, and **Export/Import backup (.json)** is built in. You get a reminder if you haven't backed up in 30 days. |
 | Sign-in or Graph access may be blocked | No Microsoft account sign-in, no Azure app registration, no server. Everything runs on your Mac. |
 
@@ -43,7 +43,7 @@ The repo (`bwbelding/retro-tab`) is empty apart from a README and LICENSE.
 ## Ribbon: two tabs grouped by workflow
 **Office limits:** each add-in can have only **one** custom tab, and each group holds at most 6 controls (a dropdown menu counts as one). Two tabs therefore means **two manifests** for the same hosted code, both installed with one copy into the `wef` folder. Because both load from the same site, they **share storage**: one shape library, one brand kit. **Rule:** a feature never gets cut for lack of space. It moves to the other tab, into a dropdown menu, or into the task pane.
 
-Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by workflow rather than by where a button comes from. Within a group, large buttons go on the left and small ones on the right: PowerPoint for Mac sizes buttons itself and shows built-in ones small, so Retro's buttons always come first (a test enforces this).
+Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organized by workflow rather than by where a button comes from. Within a group, large buttons go on the left and small ones on the right: PowerPoint for Mac sizes buttons itself and shows built-in ones small, so Retro's buttons always come first (a test enforces this).
 
 **Retro Build: make, note and arrange content**
 1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
@@ -59,7 +59,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organised by 
 3. **Review:** Deck Check · Tracker ▾ (R)
 4. **Retro:** Diagnostics · Backup ▾ (R)
 
-Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids), checked on PowerPoint for Mac 16.113. "Text Box Options" isn't on that list, so **Font Color** takes its slot. Mac differences found in testing: Font Size Down needs the standard ID `FontSizeDecrease` (the list's `FontSizeDecrese` shows nothing); Picture works as `PictureInsertFromFilePowerPoint`; no ID for **Icons** shows on Mac, so Icons stays on PowerPoint's own Insert tab. Built-in buttons that act on a selection are greyed until something is selected, as on the Home tab.
+Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids), checked on PowerPoint for Mac 16.113. "Text Box Options" isn't on that list, so **Font Color** takes its slot. Mac differences found in testing: Font Size Down needs the standard ID `FontSizeDecrease` (the list's `FontSizeDecrese` shows nothing); Picture works as `PictureInsertFromFilePowerPoint`; no ID for **Icons** shows on Mac, so Icons stays on PowerPoint's own Insert tab. Built-in buttons that act on a selection are grayed until something is selected, as on the Home tab.
 
 **Ribbon changes need the manifests re-copied:** the buttons live in the two manifest files in the `wef` folder, so a ribbon change means downloading them again. Pane changes deploy on their own. PowerPoint for Mac doesn't keep `wef` add-ins active between launches; IT deployment (Microsoft 365 admin center → Integrated apps) fixes that.
 
@@ -68,7 +68,7 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 ### Shape library (the hardest part technically)
 **What the API allows (checked against the Office.js typings for PowerPointApi 1.10):** PowerPoint can *create* any of its 177 preset shapes but can't *report* which one a shape is (only "a geometric shape"), and it can't set flips, arrowheads, gradients, shadows or other effects. So Retro reads a saved shape from two places:
 - **The slide exported as a .pptx** (`slide.exportAsBase64`, API 1.8): the shape type (chevron, callout, …), flips, how text splits into runs, embedded pictures, and anything the API couldn't recreate. Retro marks the selected shapes with a temporary tag so it can find them in the file, then removes the tag.
-- **The live shapes:** fill, outline, fonts, text settings and shape adjustments, with theme colours already resolved, in the units the API takes back.
+- **The live shapes:** fill, outline, fonts, text settings and shape adjustments, with theme colors already resolved, in the units the API takes back.
 
 **Inserting:**
 - **One click** for shapes Retro can rebuild exactly (paragraph spacing, indents and bullets count as exact when they match what your template gives a new shape, since the API can't set them): any preset shape with solid or no fill, outline, text (fonts per run, alignment, margins, autofit), adjustments and rotation; straight lines; text boxes; uncropped pictures; and groups of these.
@@ -78,7 +78,7 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 **The library (3b):**
 - **Save selection to library** with a name and category. Retro captures the shapes, makes a preview with PowerPoint's own rendering, and decides the route (one click or helper slide), giving the reasons.
 - **Insert** by clicking an item: it lands **where it was saved** (moved onto the slide if it would fall off). Helper-slide items appear on a new slide, selected; after ⌘X Retro deletes the empty helper slide and returns to your slide for ⌘V.
-- Search, category filters, favourites, rename/move/delete. The list is **most recently used first**, which is what the ribbon's **Recent** opens (ribbon menus are fixed at install, so they can't list shapes by name).
+- Search, category filters, favorites, rename/move/delete. The list is **most recently used first**, which is what the ribbon's **Recent** opens (ribbon menus are fixed at install, so they can't list shapes by name).
 - **Storage:** every item keeps the slide it was exported from, stored part by part by content, so a template's masters and pictures (3.8 MB on your deck) are stored once however many shapes come from it.
 - **Backup / Restore** (More → Backup): one .json file with the library and settings. Restore adds items that aren't already there.
 - **Check a shape** (bottom of the Shapes pane): the 3a test tool, which rebuilds the selection beside the originals and lists any differences.
@@ -94,7 +94,7 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 - **Licensing:** all photos are cleared for use, so no credit or expiry tracking.
 
 ### Smart Elements
-Small editable status graphics made of ordinary PowerPoint shapes, tagged with their kind and value so the pane can change them later. Colours come from the brand kit.
+Small editable status graphics made of ordinary PowerPoint shapes, tagged with their kind and value so the pane can change them later. Colors come from the brand kit.
 - **Numbered circle:** each new one takes the next number on the slide; renumber.
 - **Harvey ball:** 0%, 25%, 50%, 75% or 100% only; 0% is a solid ball and 100% an empty ring (your choice, reversed from the usual convention). Pie fill uses shape adjustments, PowerPointApi 1.10.
 - **Traffic light:** red / amber / green, single dot or three lights.
@@ -102,7 +102,7 @@ Small editable status graphics made of ordinary PowerPoint shapes, tagged with t
 - **Star rating:** 1–5.
 - **Checkbox:** ticked or empty.
 - **Arrow:** up / down / left / right.
-- **Trend indicator:** up (green), slightly up, flat (grey), slightly down, down (red).
+- **Trend indicator:** up (green), slightly up, flat (gray), slightly down, down (red).
 
 ### Layout tools
 Match width, height or size (to the first or last shape selected), swap positions, distribute with a fixed gap in points or cm, nudge by an exact amount, set exact X/Y/W/H for several shapes at once. All the geometry is pure functions in `layout.ts`.
@@ -115,7 +115,7 @@ Saved palette (hex values, with a "pick from selected shape" option) and saved h
 - **Tracker/agenda builder:** you assign slides to sections (stored in tags). It generates an agenda slide and a section tracker bar on each slide, highlighting the current section. *Refresh* rebuilds them.
 
 ### Deck quality check
-Scans every slide and flags: fonts outside the brand kit, fill or text colours outside the palette, objects partly off the slide, empty placeholders, and missing alt text (API 1.10). Each result has a **Go to** button that selects the problem shape. Rules are pure functions over a snapshot of the deck.
+Scans every slide and flags: fonts outside the brand kit, fill or text colors outside the palette, objects partly off the slide, empty placeholders, and missing alt text (API 1.10). Each result has a **Go to** button that selects the problem shape. Rules are pure functions over a snapshot of the deck.
 
 ### Diagnostics (ships first)
 Shows PowerPoint version and platform, a table of supported API versions, whether IndexedDB storage works, and whether the hosting site is reachable. A **Copy report** button helps if you need to send it to IT.
@@ -130,7 +130,7 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
    - **2b:** Smart Elements (see Features), added from a **Smart ▾** menu in the Shapes group and edited in the Tools pane.
 3. **Shape library**, in two PRs:
    - **3a:** the shape capture engine and a test tool in the Shapes pane, run on your Mac.
-   - **3b:** the library (save, preview, search, categories, favourites, insert, Recent) plus Backup/Restore.
+   - **3b:** the library (save, preview, search, categories, favorites, insert, Recent) plus Backup/Restore.
 4. **Photos.**
 5. **Brand kit.**
 6. **Section tracker + Deck check.**

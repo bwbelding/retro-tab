@@ -41,7 +41,7 @@ const useStyles = makeStyles({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: tokens.borderRadiusSmall,
-    // A mid-grey checkerboard, so both dark shapes and white ones (for dark slides) show up.
+    // A mid-gray checkerboard, so both dark shapes and white ones (for dark slides) show up.
     backgroundColor: "#b4b4b4",
     backgroundImage: "linear-gradient(45deg, #a2a2a2 25%, transparent 25%, transparent 75%, #a2a2a2 75%), linear-gradient(45deg, #a2a2a2 25%, transparent 25%, transparent 75%, #a2a2a2 75%)",
     backgroundSize: "12px 12px",
@@ -193,21 +193,25 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
             <div className={s.name} title={item.name}>
               {item.name}
             </div>
-            {item.route === "helper" && (
-              <Badge size="small" appearance="tint" color="warning" title={`Inserted with a helper slide because of: ${item.issues.join(", ")}`}>
+            {item.route === "helper" ? (
+              <Badge size="small" appearance="tint" color="warning">
                 Helper slide
+              </Badge>
+            ) : (
+              <Badge size="small" appearance="tint" color="success">
+                One click
               </Badge>
             )}
           </div>
           <Button
             size="small"
             appearance="transparent"
-            icon={item.favourite ? <StarFilled /> : <StarRegular />}
-            aria-label={item.favourite ? "Remove from favourites" : "Add to favourites"}
-            aria-pressed={item.favourite}
+            icon={item.favorite ? <StarFilled /> : <StarRegular />}
+            aria-label={item.favorite ? "Remove from favorites" : "Add to favorites"}
+            aria-pressed={item.favorite}
             onClick={() =>
               void library
-                .update(item.id, { favourite: !item.favourite })
+                .update(item.id, { favorite: !item.favorite })
                 .then(reload)
                 .catch(report)
             }
@@ -219,6 +223,11 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
             <MenuPopover>
               <MenuList>
                 <MenuItem onClick={() => void insert()}>Insert</MenuItem>
+                {item.route === "helper" && (
+                  <MenuItem onClick={() => pane.showMessage({ intent: "info", text: `“${item.name}” uses a helper slide because PowerPoint won't let Retro recreate: ${item.issues.join(", ")}.` })}>
+                    Why a helper slide?
+                  </MenuItem>
+                )}
                 <MenuItem onClick={() => setMode("edit")}>Rename or move…</MenuItem>
                 <MenuItem onClick={() => setMode("delete")}>Delete…</MenuItem>
               </MenuList>
@@ -263,7 +272,7 @@ export function Shapes() {
   const shown = useMemo(() => filterItems(items ?? [], query, filter), [items, query, filter]);
   const chips: { value: Filter; label: string }[] = [
     { value: "all", label: "All" },
-    { value: "favourites", label: "★ Favourites" },
+    { value: "favorites", label: "★ Favorites" },
     ...categories.map((c) => ({ value: `category:${c}` as Filter, label: c })),
   ];
 
@@ -331,7 +340,8 @@ export function Shapes() {
               </div>
             )}
             <Text size={200} className={ui.muted}>
-              Most recently used first. Click a shape to insert it where it was saved.
+              Most recently used first. Click a shape to insert it where it was saved. <b>One click</b> shapes appear on your slide. <b>Helper slide</b> shapes appear on a new slide, selected:
+              press ⌘X and Retro takes you back to your slide to press ⌘V.
             </Text>
           </>
         )}

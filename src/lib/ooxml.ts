@@ -1,7 +1,7 @@
 // Reads the .pptx PowerPoint exports for a slide and describes the shapes Retro tagged before
 // exporting: what each one is (the API can't say), where it sits, how its text is split into runs,
-// and anything about it that the add-in API can't recreate. Colours and fonts are read from the
-// live shapes instead (see shapeCapture.ts), because PowerPoint resolves theme colours for us there.
+// and anything about it that the add-in API can't recreate. Colors and fonts are read from the
+// live shapes instead (see shapeCapture.ts), because PowerPoint resolves theme colors for us there.
 
 import { apiGeometry, BENT_LINES, STRAIGHT_LINES } from "./geometry";
 import type { Zip } from "./zip";
@@ -112,7 +112,7 @@ export async function readRels(zip: Zip, part: string): Promise<Rels> {
 // --- Text ---
 
 /**
- * Paragraph settings the add-in API can't set: spacing, indents and bullets, as normalised strings
+ * Paragraph settings the add-in API can't set: spacing, indents and bullets, as normalized strings
  * (spacing "pct:<1000ths of a percent>" or "pts:<100ths of a point>", indents in EMU).
  */
 export type ParaStyle = Record<string, string>;
@@ -405,7 +405,7 @@ function readNode(el: Element, ctx: Ctx, t: Transform): XmlNode | undefined {
       if (kid(spPr, "ln")) issues.push("picture border");
       if (kid(blipFill, "srcRect")?.attributes.length) issues.push("cropped picture");
       if (blip && Array.from(blip.getElementsByTagName("*")).some((e) => e.localName === "svgBlip")) issues.push("SVG icon");
-      if (blip && Array.from(blip.children).some((c) => c.localName !== "extLst")) issues.push("picture colour adjustments");
+      if (blip && Array.from(blip.children).some((c) => c.localName !== "extLst")) issues.push("picture color adjustments");
       const prst = kid(spPr, "prstGeom")?.getAttribute("prst");
       if (prst && prst !== "rect") issues.push("picture cropped to a shape");
       if (frame.flipH || frame.flipV) issues.push("mirrored");

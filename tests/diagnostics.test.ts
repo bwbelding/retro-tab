@@ -9,7 +9,7 @@ describe("interpretFolderPick", () => {
     expect(interpretFolderPick([]).status).toBe("warn");
   });
 
-  it("recognises a picked folder and counts images", () => {
+  it("recognizes a picked folder and counts images", () => {
     const r = interpretFolderPick([
       file("a.jpg", "Licensed Photos/a.jpg", "image/jpeg"),
       file("b.HEIC", "Licensed Photos/People/b.HEIC"),

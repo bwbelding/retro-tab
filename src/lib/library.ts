@@ -18,7 +18,7 @@ export interface LibraryItem {
   id: string;
   name: string;
   category: string;
-  favourite: boolean;
+  favorite: boolean;
   created: string;
   /** When it was last inserted. */
   used?: string;
@@ -64,7 +64,7 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 
 // --- Pure helpers (unit tested) ---
 
-export type Filter = "all" | "favourites" | `category:${string}`;
+export type Filter = "all" | "favorites" | `category:${string}`;
 
 export function categoriesOf(items: LibraryItem[]): string[] {
   return [...new Set(items.map((i) => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -74,7 +74,7 @@ export function categoriesOf(items: LibraryItem[]): string[] {
 export function filterItems(items: LibraryItem[], query: string, filter: Filter): LibraryItem[] {
   const q = query.trim().toLowerCase();
   return items
-    .filter((i) => filter === "all" || (filter === "favourites" ? i.favourite : i.category === filter.slice("category:".length)))
+    .filter((i) => filter === "all" || (filter === "favorites" ? i.favorite : i.category === filter.slice("category:".length)))
     .filter((i) => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
     .sort((a, b) => (b.used ?? b.created).localeCompare(a.used ?? a.created));
 }
@@ -111,8 +111,15 @@ export interface Backup {
 /** Settings (kv keys) that go into backups. */
 export const SETTING_KEYS = ["pref.matchReference"];
 
+/** Version 1.5.0 stored the star as "favourite"; read it as "favorite". */
+function upgrade(item: LibraryItem & { favourite?: boolean }): LibraryItem {
+  if (item.favourite === undefined) return item;
+  const { favourite, ...rest } = item;
+  return { ...rest, favorite: rest.favorite ?? favourite };
+}
+
 export function createLibrary(store: Store) {
-  const list = async () => (await store.get<LibraryItem[]>(INDEX)) ?? [];
+  const list = async () => ((await store.get<LibraryItem[]>(INDEX)) ?? []).map(upgrade);
   const writeIndex = (items: LibraryItem[]) => store.set(INDEX, items);
 
   return {
@@ -136,7 +143,7 @@ export function createLibrary(store: Store) {
         id: crypto.randomUUID(),
         name: item.name.trim() || "Shape",
         category: item.category.trim(),
-        favourite: false,
+        favorite: false,
         created: new Date().toISOString(),
         uses: 0,
         route: item.issues.length ? "helper" : "click",
@@ -150,7 +157,7 @@ export function createLibrary(store: Store) {
       return saved;
     },
 
-    async update(id: string, patch: Partial<Pick<LibraryItem, "name" | "category" | "favourite">>): Promise<void> {
+    async update(id: string, patch: Partial<Pick<LibraryItem, "name" | "category" | "favorite">>): Promise<void> {
       await writeIndex((await list()).map((i) => (i.id === id ? { ...i, ...patch } : i)));
     },
 
@@ -207,7 +214,7 @@ export function createLibrary(store: Store) {
       const have = new Set(items.map((i) => i.id));
       const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
       const added: LibraryItem[] = [];
-      for (const item of backup.items) {
+      for (const item of backup.items.map(upgrade)) {
         const data = backup.data[item.id];
         if (have.has(item.id) || !data) continue;
         for (const { hash } of data.parts) {

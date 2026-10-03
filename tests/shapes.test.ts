@@ -109,7 +109,7 @@ describe("comparing a copy with its original", () => {
     expect(compareRecipes(recipe([chevron()]), recipe([copy]), 0, 0)).toEqual([
       "1. Chevron with text: shape type Chevron came back Rectangle",
       "1. Chevron with text: rotation 0° came back 90°",
-      "1. Chevron with text: fill colour #C43E1C came back #000000",
+      "1. Chevron with text: fill color #C43E1C came back #000000",
       "1. Chevron with text: adjustment 1 was 0.5, came back 50000",
       '1. Chevron with text: font differs from character 3 ({"name":"Aptos","size":18,"bold":true} vs {"name":"Aptos","size":18,"bold":false})',
     ]);
