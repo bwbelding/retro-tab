@@ -115,6 +115,18 @@ describe("comparing a copy with its original", () => {
     ]);
   });
 
+  it("reports paragraph spacing that changed in the copy", () => {
+    const withStyles = (style: string): RecipeNode => ({
+      ...chevron(),
+      text: { length: 8, paragraphs: [{ start: 0, length: 8 }], runs: [], styles: [style] },
+    });
+    const a = withStyles("marL=0 lnSpc=pct:90000 bullet=none");
+    expect(compareRecipes(recipe([a]), recipe([withStyles("marL=0 lnSpc=pct:90000 bullet=none")]), 0, 0)).toEqual([]);
+    expect(compareRecipes(recipe([a]), recipe([withStyles("marL=0 lnSpc=pct:100000 bullet=none")]), 0, 0)).toEqual([
+      "1. Chevron with text: paragraph 1 lnSpc pct:90000 → pct:100000",
+    ]);
+  });
+
   it("describes shapes in plain words", () => {
     expect(describeNode(chevron())).toBe("Chevron with text");
     expect(describeNode({ ...chevron(), geometry: "Round2SameRectangle", look: {} })).toBe("Round 2 Same Rectangle");

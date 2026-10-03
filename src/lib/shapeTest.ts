@@ -100,6 +100,20 @@ function compareNode(where: string, a: RecipeNode, b: RecipeNode, dx: number, dy
     }
   }
 
+  // Spacing, indents and bullets, read from the slide file (the API can't report them).
+  const sa = a.text?.styles ?? [];
+  const sb = b.text?.styles ?? [];
+  sa.forEach((style, i) => {
+    if (sb[i] === undefined || style === sb[i]) return;
+    const before = new Map(style.split(" ").map((kv) => kv.split("=") as [string, string]));
+    const changed = sb[i]
+      .split(" ")
+      .map((kv) => kv.split("="))
+      .filter(([k, v]) => before.get(k) !== v)
+      .map(([k, v]) => `${k} ${before.get(k)} → ${v}`);
+    out.push(`${where}: paragraph ${i + 1} ${changed.join(", ")}`);
+  });
+
   const ca = a.children ?? [];
   const cb = b.children ?? [];
   if (ca.length !== cb.length) out.push(`${where}: ${ca.length} shapes in the group came back as ${cb.length}`);

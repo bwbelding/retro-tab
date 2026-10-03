@@ -30,6 +30,8 @@ export interface TextLayout {
   length: number;
   paragraphs: Span[];
   runs: Span[];
+  /** Spacing, indents and bullets of each paragraph as rendered, for comparing copies. */
+  styles: string[];
 }
 
 export type NodeKind = "shape" | "line" | "picture" | "group" | "other";
@@ -109,7 +111,92 @@ export async function readRels(zip: Zip, part: string): Promise<Rels> {
 
 // --- Text ---
 
-export function textLayout(txBody: Element | undefined): TextLayout | undefined {
+/**
+ * Paragraph settings the add-in API can't set: spacing, indents and bullets, as normalised strings
+ * (spacing "pct:<1000ths of a percent>" or "pts:<100ths of a point>", indents in EMU).
+ */
+export type ParaStyle = Record<string, string>;
+
+/** What PowerPoint uses when nothing sets a value. */
+const BUILT_IN: ParaStyle = { marL: "0", indent: "0", lnSpc: "pct:100000", spcBef: "0", spcAft: "0", bullet: "none" };
+
+/** Paragraph defaults: what a shape inherits, and what a newly created shape or text box gets. */
+export interface TextDefaults {
+  inherited: ParaStyle[];
+  newShape: ParaStyle[];
+  newTextBox: ParaStyle[];
+}
+
+const LEVELS = 9;
+export const PLAIN_DEFAULTS: TextDefaults = {
+  inherited: Array.from({ length: LEVELS }, () => BUILT_IN),
+  newShape: Array.from({ length: LEVELS }, () => BUILT_IN),
+  newTextBox: Array.from({ length: LEVELS }, () => BUILT_IN),
+};
+
+function spacing(el: Element | undefined): string | undefined {
+  const pct = kid(el, "spcPct");
+  const pts = kid(el, "spcPts");
+  const value = pct ? num(pct, "val") : pts ? num(pts, "val") : undefined;
+  if (value === undefined) return undefined;
+  if (value === 0 && el?.localName !== "lnSpc") return "0";
+  return `${pct ? "pct" : "pts"}:${value}`;
+}
+
+/** The settings a paragraph-properties element (pPr or lvlNpPr) sets explicitly. */
+export function paraStyle(pPr: Element | undefined): ParaStyle {
+  const out: ParaStyle = {};
+  if (!pPr) return out;
+  for (const a of ["marL", "indent"]) if (pPr.hasAttribute(a)) out[a] = String(num(pPr, a));
+  for (const n of ["lnSpc", "spcBef", "spcAft"]) {
+    const v = spacing(kid(pPr, n));
+    if (v !== undefined) out[n] = v;
+  }
+  if (kid(pPr, "buNone")) out.bullet = "none";
+  else if (kid(pPr, "buChar")) out.bullet = `char:${kid(pPr, "buChar")!.getAttribute("char") ?? ""}`;
+  else if (kid(pPr, "buAutoNum")) out.bullet = `number:${kid(pPr, "buAutoNum")!.getAttribute("type") ?? ""}`;
+  else if (kid(pPr, "buBlip")) out.bullet = "picture";
+  return out;
+}
+
+/** Level n (0-based) of a list style (lstStyle, defaultTextStyle, ...). */
+const levelOf = (list: Element | undefined, n: number) => paraStyle(kid(list, `lvl${n + 1}pPr`));
+
+export function textDefaults(defaultTextStyle: Element | undefined, theme: Document | undefined): TextDefaults {
+  const objectDefaults = theme ? Array.from(theme.getElementsByTagName("*")).find((e) => e.localName === "objectDefaults") : undefined;
+  const spDef = path(objectDefaults, "spDef", "lstStyle");
+  const txDef = path(objectDefaults, "txDef", "lstStyle");
+  const inherited = Array.from({ length: LEVELS }, (_, n) => ({ ...BUILT_IN, ...paraStyle(kid(defaultTextStyle, "defPPr")), ...levelOf(defaultTextStyle, n) }));
+  return {
+    inherited,
+    newShape: inherited.map((s, n) => ({ ...s, ...levelOf(spDef, n) })),
+    newTextBox: inherited.map((s, n) => ({ ...s, ...levelOf(txDef, n) })),
+  };
+}
+
+const KEY_NAME: Record<string, string> = { marL: "left indent", indent: "first-line indent", lnSpc: "line spacing", spcBef: "space before", spcAft: "space after", bullet: "bullet" };
+const KEY_ISSUE: Record<string, string> = { marL: "paragraph indents", indent: "paragraph indents", lnSpc: "line or paragraph spacing", spcBef: "line or paragraph spacing", spcAft: "line or paragraph spacing", bullet: "bullets" };
+
+function showValue(key: string, v: string): string {
+  if (key === "marL" || key === "indent") return `${Math.round((Number(v) / EMU_PER_POINT) * 10) / 10} pt`;
+  if (v === "0") return "0";
+  const [unit, n] = v.split(":");
+  if (unit === "pct") return `${Number(n) / 1000}%`;
+  if (unit === "pts") return `${Number(n) / 100} pt`;
+  return v.replace("char:", "“").replace(/^“(.*)$/, "“$1”");
+}
+
+/** Each paragraph's rendered spacing, indents and bullets, with its level. */
+function paragraphStyles(txBody: Element | undefined, inherited: ParaStyle[]): { level: number; style: ParaStyle }[] {
+  const lstStyle = kid(txBody, "lstStyle");
+  return kids(txBody, "p").map((p) => {
+    const pPr = kid(p, "pPr");
+    const level = Math.min(LEVELS - 1, Math.max(0, num(pPr, "lvl")));
+    return { level, style: { ...inherited[level], ...levelOf(lstStyle, level), ...paraStyle(pPr) } };
+  });
+}
+
+export function textLayout(txBody: Element | undefined, defaults: TextDefaults = PLAIN_DEFAULTS): TextLayout | undefined {
   const paras = kids(txBody, "p");
   if (paras.length === 0) return undefined;
   const paragraphs: Span[] = [];
@@ -130,20 +217,29 @@ export function textLayout(txBody: Element | undefined): TextLayout | undefined 
     paragraphs.push({ start, length: pos - start });
   });
   if (pos === 0) return undefined;
-  return { length: pos, paragraphs, runs };
+  const styles = paragraphStyles(txBody, defaults.inherited).map(({ style }) =>
+    Object.keys(BUILT_IN)
+      .map((k) => `${k}=${style[k]}`)
+      .join(" "),
+  );
+  return { length: pos, paragraphs, runs, styles };
 }
 
-export function textIssues(txBody: Element | undefined): string[] {
+/** What a paragraph setting is, and what a newly created shape would get instead. */
+export function textIssues(txBody: Element | undefined, defaults: TextDefaults = PLAIN_DEFAULTS, textBox = false): string[] {
   const issues = new Set<string>();
   const body = kid(txBody, "bodyPr");
   const vert = body?.getAttribute("vert");
   if ((vert && vert !== "horz") || num(body, "rot") !== 0) issues.add("vertical or rotated text");
   if (num(body, "numCol", 1) > 1) issues.add("text in columns");
+  const fresh = textBox ? defaults.newTextBox : defaults.newShape;
+  for (const { level, style } of paragraphStyles(txBody, defaults.inherited)) {
+    for (const key of Object.keys(BUILT_IN)) {
+      if (style[key] === fresh[level][key]) continue;
+      issues.add(`${KEY_ISSUE[key]} (${KEY_NAME[key]} ${showValue(key, style[key])} where a new ${textBox ? "text box" : "shape"} gets ${showValue(key, fresh[level][key])})`);
+    }
+  }
   for (const p of kids(txBody, "p")) {
-    const pPr = kid(p, "pPr");
-    if (pPr && ["lnSpc", "spcBef", "spcAft"].some((n) => kid(pPr, n))) issues.add("line or paragraph spacing");
-    if (pPr && (num(pPr, "marL") !== 0 || num(pPr, "indent") !== 0)) issues.add("paragraph indents");
-    if (pPr && ["buChar", "buAutoNum", "buBlip"].some((n) => kid(pPr, n))) issues.add("bullets");
     for (const r of [...kids(p, "r"), ...kids(p, "fld")]) {
       const rPr = kid(r, "rPr");
       if (!rPr) continue;
@@ -162,6 +258,7 @@ interface Ctx {
   zip: Zip;
   /** Effects defined by the theme's effect styles, indexed from 1 like effectRef. */
   themeEffects: boolean[];
+  text: TextDefaults;
   tags: Map<string, string | undefined>;
 }
 
@@ -293,10 +390,11 @@ function readNode(el: Element, ctx: Ctx, t: Transform): XmlNode | undefined {
       const geometry = apiGeometry(prst);
       if (!geometry) issues.push(prst ? `shape type “${prst}”` : "unknown shape type");
       if (frame.flipH !== frame.flipV) issues.push("mirrored");
-      issues.push(...fillIssues(spPr), ...textIssues(txBody));
+      const textBox = flag(cNv, "txBox");
+      issues.push(...fillIssues(spPr), ...textIssues(txBody, ctx.text, textBox));
       const blip = kid(kid(spPr, "blipFill"), "blip");
       const media = mediaPart(blip, ctx, issues);
-      return { ...base, kind: "shape", frame, geometry, textBox: flag(cNv, "txBox"), text: textLayout(txBody), media, issues };
+      return { ...base, kind: "shape", frame, geometry, textBox, text: textLayout(txBody, ctx.text), media, issues };
     }
     case "pic": {
       const spPr = kid(el, "spPr");
@@ -333,7 +431,7 @@ export function slidePart(zip: Zip): string | undefined {
     .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]))[0];
 }
 
-async function readTheme(zip: Zip, slide: string, slideRels: Rels): Promise<boolean[]> {
+async function readTheme(zip: Zip, slide: string, slideRels: Rels): Promise<Document | undefined> {
   // slide → layout → master → theme
   const follow = async (part: string | undefined, rels: Rels | undefined, type: string) => {
     if (!part || !rels) return [undefined, undefined] as const;
@@ -344,10 +442,18 @@ async function readTheme(zip: Zip, slide: string, slideRels: Rels): Promise<bool
   const [master, masterRels] = await follow(layout, layoutRels, "slideMasters/");
   const [theme] = await follow(master, masterRels, "theme/");
   const text = theme ? await zip.text(theme) : undefined;
-  if (!text) return [];
-  const doc = parseXml(text);
-  const styles = Array.from(doc.getElementsByTagName("*")).find((e) => e.localName === "effectStyleLst");
+  return text ? parseXml(text) : undefined;
+}
+
+function themeEffects(theme: Document | undefined): boolean[] {
+  if (!theme) return [];
+  const styles = Array.from(theme.getElementsByTagName("*")).find((e) => e.localName === "effectStyleLst");
   return [false, ...kids(styles, "effectStyle").map((s) => kids(s, "effectLst").some((l) => l.children.length > 0) || Boolean(kid(s, "scene3d") || kid(s, "sp3d")))];
+}
+
+async function defaultTextStyle(zip: Zip): Promise<Element | undefined> {
+  const text = await zip.text("ppt/presentation.xml");
+  return text ? Array.from(parseXml(text).getElementsByTagName("*")).find((e) => e.localName === "defaultTextStyle") : undefined;
 }
 
 export interface ParsedSlide {
@@ -369,7 +475,8 @@ export async function parseSlide(zip: Zip): Promise<ParsedSlide> {
     const tag = Array.from(parseXml(text).getElementsByTagName("*")).find((e) => e.localName === "tag" && e.getAttribute("name")?.toUpperCase() === CAPTURE_TAG);
     tags.set(id, tag?.getAttribute("val") ?? undefined);
   }
-  const ctx: Ctx = { rels, zip, tags, themeEffects: await readTheme(zip, part, rels) };
+  const theme = await readTheme(zip, part, rels);
+  const ctx: Ctx = { rels, zip, tags, themeEffects: themeEffects(theme), text: textDefaults(await defaultTextStyle(zip), theme) };
   const doc = parseXml((await zip.text(part)) ?? "");
   const spTree = Array.from(doc.getElementsByTagName("*")).find((e) => e.localName === "spTree");
   const nodes = Array.from(spTree?.children ?? [])
