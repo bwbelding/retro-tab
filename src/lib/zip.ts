@@ -5,10 +5,24 @@ export interface Zip {
   names: string[];
   bytes(name: string): Promise<Uint8Array | undefined>;
   text(name: string): Promise<string | undefined>;
+  /** An entry exactly as stored (still compressed), for copying into another zip. */
+  raw(name: string): RawEntry | undefined;
+}
+
+/** A zip entry as stored: compressed data plus what's needed to write it back unchanged. */
+export interface RawEntry {
+  name: string;
+  method: number;
+  crc: number;
+  /** Uncompressed size. */
+  size: number;
+  data: Uint8Array;
 }
 
 interface Entry {
   method: number;
+  crc: number;
+  compressed: number;
   size: number;
   offset: number;
 }
@@ -56,29 +70,82 @@ export function openZip(data: Uint8Array): Zip {
     const name = decoder.decode(data.subarray(p + 46, p + 46 + nameLen));
     entries.set(name, {
       method: view.getUint16(p + 10, true),
-      size: view.getUint32(p + 20, true),
+      crc: view.getUint32(p + 16, true),
+      compressed: view.getUint32(p + 20, true),
+      size: view.getUint32(p + 24, true),
       offset: view.getUint32(p + 42, true),
     });
     p += 46 + nameLen + view.getUint16(p + 30, true) + view.getUint16(p + 32, true);
   }
 
-  const bytes = async (name: string) => {
+  const raw = (name: string): RawEntry | undefined => {
     const e = entries.get(name);
     if (!e) return undefined;
     if (view.getUint32(e.offset, true) !== LOCAL) throw new Error(`Can't read ${name} from the exported slide.`);
     const start = e.offset + 30 + view.getUint16(e.offset + 26, true) + view.getUint16(e.offset + 28, true);
-    const raw = data.subarray(start, start + e.size);
-    if (e.method === 0) return raw;
-    if (e.method === 8) return inflate(raw);
+    return { name, method: e.method, crc: e.crc, size: e.size, data: data.subarray(start, start + e.compressed) };
+  };
+
+  const bytes = async (name: string) => {
+    const r = raw(name);
+    if (!r) return undefined;
+    if (r.method === 0) return r.data;
+    if (r.method === 8) return inflate(r.data);
     throw new Error(`Unsupported compression in ${name}.`);
   };
 
   return {
     names: [...entries.keys()],
+    raw,
     bytes,
     text: async (name) => {
       const b = await bytes(name);
       return b && decoder.decode(b);
     },
   };
+}
+
+/** Write entries (already compressed, as read with Zip.raw) into a new zip file. */
+export function writeZip(entries: RawEntry[]): Uint8Array {
+  const enc = new TextEncoder();
+  const names = entries.map((e) => enc.encode(e.name));
+  const localSize = entries.reduce((n, e, i) => n + 30 + names[i].length + e.data.length, 0);
+  const centralSize = names.reduce((n, name) => n + 46 + name.length, 0);
+  const out = new Uint8Array(localSize + centralSize + 22);
+  const view = new DataView(out.buffer);
+  let p = 0;
+  const offsets: number[] = [];
+  entries.forEach((e, i) => {
+    offsets.push(p);
+    view.setUint32(p, LOCAL, true);
+    view.setUint16(p + 4, 20, true); // version needed
+    view.setUint16(p + 8, e.method, true);
+    view.setUint32(p + 14, e.crc, true);
+    view.setUint32(p + 18, e.data.length, true);
+    view.setUint32(p + 22, e.size, true);
+    view.setUint16(p + 26, names[i].length, true);
+    out.set(names[i], p + 30);
+    out.set(e.data, p + 30 + names[i].length);
+    p += 30 + names[i].length + e.data.length;
+  });
+  const central = p;
+  entries.forEach((e, i) => {
+    view.setUint32(p, CENTRAL, true);
+    view.setUint16(p + 4, 20, true); // version made by
+    view.setUint16(p + 6, 20, true); // version needed
+    view.setUint16(p + 10, e.method, true);
+    view.setUint32(p + 16, e.crc, true);
+    view.setUint32(p + 20, e.data.length, true);
+    view.setUint32(p + 24, e.size, true);
+    view.setUint16(p + 28, names[i].length, true);
+    view.setUint32(p + 42, offsets[i], true);
+    out.set(names[i], p + 46);
+    p += 46 + names[i].length;
+  });
+  view.setUint32(p, EOCD, true);
+  view.setUint16(p + 8, entries.length, true);
+  view.setUint16(p + 10, entries.length, true);
+  view.setUint32(p + 12, centralSize, true);
+  view.setUint32(p + 16, central, true);
+  return out;
 }

@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, MessageBar, MessageBarBody, Spinner, Text, makeStyles, tokens } from "@fluentui/react-components";
 import {
   ArrowClockwiseRegular,
+  ArrowDownloadRegular,
+  ArrowUploadRegular,
   CheckmarkCircleRegular,
   CopyRegular,
   DismissCircleRegular,
   FolderOpenRegular,
   WarningRegular,
 } from "@fluentui/react-icons";
-import { activity as activityLog, formatActivity, type ActivityEntry } from "../../lib/activity";
+import { activity as activityLog, describeError, formatActivity, type ActivityEntry } from "../../lib/activity";
+import type { Backup } from "../../lib/library";
+import { library } from "../../lib/libraryActions";
 import { kv } from "../../lib/idb";
 import { officeIsSetSupported, probeRequirements } from "../../lib/capabilities";
 import {
@@ -87,6 +91,82 @@ function environment(tab: string): Environment {
     origin: location.origin,
     userAgent: navigator.userAgent,
   };
+}
+
+function downloadJson(name: string, value: unknown) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Back up the shape library and settings to a file, or restore from one. */
+function BackupSection() {
+  const styles = useStyles();
+  const input = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<{ intent: "success" | "error" | "info"; text: string } | undefined>();
+
+  const backup = async () => {
+    try {
+      const data = await activityLog.track("pane backup", () => library.backup());
+      downloadJson(`Retro backup ${data.exported.slice(0, 10)}.json`, data);
+      setStatus({
+        intent: "info",
+        text: `Backup of ${data.items.length} shape${data.items.length === 1 ? "" : "s"} and your settings saved to Downloads. If no file appeared there, tell me: PowerPoint may block downloads from add-ins.`,
+      });
+    } catch (e) {
+      setStatus({ intent: "error", text: describeError(e) });
+    }
+  };
+
+  const restore = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const added = await activityLog.track("pane restore", async () => library.restore(JSON.parse(await file.text()) as Backup));
+      setStatus({ intent: "success", text: `Restored ${added} shape${added === 1 ? "" : "s"}${added ? "" : " (they were all already in your library)"} and your settings.` });
+    } catch (e) {
+      setStatus({ intent: "error", text: e instanceof SyntaxError ? "That file isn't a Retro backup." : describeError(e) });
+    }
+  };
+
+  return (
+    <div className={styles.section}>
+      <Text as="h3" weight="semibold" className={styles.heading}>
+        Backup
+      </Text>
+      <Text size={200} className={styles.muted}>
+        Your shape library and settings live in PowerPoint's add-in storage on this Mac. Clearing Office's cache would erase them, so keep a backup file.
+      </Text>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Button icon={<ArrowDownloadRegular />} onClick={() => void backup()}>
+          Back up
+        </Button>
+        <Button icon={<ArrowUploadRegular />} onClick={() => input.current?.click()}>
+          Restore…
+        </Button>
+      </div>
+      <input
+        ref={input}
+        className={styles.hidden}
+        type="file"
+        accept=".json,application/json"
+        aria-label="Choose a Retro backup file"
+        onChange={(e) => {
+          void restore(e.currentTarget.files?.[0]);
+          e.currentTarget.value = "";
+        }}
+      />
+      {status && (
+        <MessageBar layout="multiline" intent={status.intent}>
+          <MessageBarBody>{status.text}</MessageBarBody>
+        </MessageBar>
+      )}
+    </div>
+  );
 }
 
 export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
@@ -223,10 +303,9 @@ export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
           aria-label="Choose a photo folder"
           onChange={(e) => setFolder(interpretFolderPick(Array.from(e.currentTarget.files ?? [])))}
         />
-        <Text size={200} className={styles.muted}>
-          Backup and restore arrive with the shape library in Phase 3.
-        </Text>
       </div>
+
+      <BackupSection />
 
       <div className={styles.section}>
         <Text as="h3" weight="semibold" className={styles.heading}>
