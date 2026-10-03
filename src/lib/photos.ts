@@ -1,0 +1,149 @@
+// The photo picker's model: which photos are in the chosen folder, their previews, and the
+// geometry of placing them. Pure functions here are unit tested; reading files and inserting
+// into PowerPoint is in photoActions.ts.
+//
+// The folder is picked in Finder each session (browsers can't keep access to a folder), so the
+// list and previews are kept in IndexedDB: browsing works straight away after a restart, and
+// only inserting a full-size photo needs the folder picked again ("Reconnect").
+
+import type { Store } from "./library";
+
+export type Placement = "full" | "box" | "background" | "asis";
+export type Anchor = "top" | "center" | "bottom";
+
+export interface PhotoEntry {
+  /** Path inside the chosen folder, e.g. "Cities/Paris 01.jpg". Unique. */
+  id: string;
+  name: string;
+  /** Subfolder path inside the chosen folder ("" for photos at the top level). */
+  folder: string;
+  size: number;
+  modified: number;
+  width: number;
+  height: number;
+}
+
+export interface PhotoIndex {
+  /** Name of the chosen folder. */
+  root: string;
+  scanned: string;
+  photos: PhotoEntry[];
+}
+
+/** What the folder picker returns for each file. */
+export interface PickedFile {
+  name: string;
+  type: string;
+  size: number;
+  lastModified: number;
+  webkitRelativePath: string;
+}
+
+const IMAGE = /\.(jpe?g|png|gif|webp|heic|heif|tiff?|bmp)$/i;
+
+export function isPhoto(f: { name: string; type: string }): boolean {
+  if (f.name.startsWith(".")) return false; // macOS ._ files and other hidden files
+  return IMAGE.test(f.name) || (f.type.startsWith("image/") && f.type !== "image/svg+xml");
+}
+
+/** Split "Root/Cities/Paris.jpg" into the root folder name and the path inside it. */
+export function splitPath(relative: string): { root: string; path: string } {
+  const i = relative.indexOf("/");
+  return i < 0 ? { root: "", path: relative } : { root: relative.slice(0, i), path: relative.slice(i + 1) };
+}
+
+export function folderOf(path: string): string {
+  const i = path.lastIndexOf("/");
+  return i < 0 ? "" : path.slice(0, i);
+}
+
+/** Which picked files are new or changed, and which known photos are gone. */
+export function planScan<F extends PickedFile>(files: F[], known: PhotoEntry[]): { root: string; unchanged: PhotoEntry[]; fresh: F[]; removed: string[] } {
+  const photos = files.filter(isPhoto);
+  const root = splitPath(photos[0]?.webkitRelativePath ?? files[0]?.webkitRelativePath ?? "").root;
+  const byId = new Map(known.map((p) => [p.id, p]));
+  const seen = new Set<string>();
+  const unchanged: PhotoEntry[] = [];
+  const fresh: F[] = [];
+  for (const f of photos) {
+    const id = splitPath(f.webkitRelativePath || f.name).path;
+    seen.add(id);
+    const old = byId.get(id);
+    if (old && old.size === f.size && old.modified === f.lastModified) unchanged.push(old);
+    else fresh.push(f);
+  }
+  return { root, unchanged, fresh, removed: known.filter((p) => !seen.has(p.id)).map((p) => p.id) };
+}
+
+/** Top-level subfolders, for the filter chips. */
+export function topFolders(photos: PhotoEntry[]): string[] {
+  return [...new Set(photos.map((p) => p.folder.split("/")[0]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+/** Photos in a top-level subfolder ("" for all), matching a search, sorted by path. */
+export function filterPhotos(photos: PhotoEntry[], query: string, folder: string): PhotoEntry[] {
+  const q = query.trim().toLowerCase();
+  return photos
+    .filter((p) => !folder || p.folder === folder || p.folder.startsWith(`${folder}/`))
+    .filter((p) => !q || p.id.toLowerCase().includes(q))
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+}
+
+// --- Geometry ---
+
+export interface Crop {
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+}
+
+/**
+ * The part of a w×h photo to keep so it fills a target of the given aspect (width / height)
+ * without stretching. Height is trimmed from the top, middle or bottom as anchored; width is
+ * always trimmed evenly from both sides.
+ */
+export function cropFor(w: number, h: number, aspect: number, anchor: Anchor): Crop {
+  if (w / h > aspect) {
+    const sw = h * aspect;
+    return { sx: (w - sw) / 2, sy: 0, sw, sh: h };
+  }
+  const sh = w / aspect;
+  const sy = anchor === "top" ? 0 : anchor === "bottom" ? h - sh : (h - sh) / 2;
+  return { sx: 0, sy, sw: w, sh };
+}
+
+/** Pixel size to save a crop at for a target in points: 2 px per point, never enlarged, at most 3000 px. */
+export function outputSize(crop: { sw: number; sh: number }, target: { width: number; height: number }): { width: number; height: number } {
+  const scale = Math.min(1, (target.width * 2) / crop.sw, (target.height * 2) / crop.sh, 3000 / Math.max(crop.sw, crop.sh));
+  return { width: Math.max(1, Math.round(crop.sw * scale)), height: Math.max(1, Math.round(crop.sh * scale)) };
+}
+
+/** Where an uncropped photo goes: as large as fits in 80% of the slide, centered. */
+export function asIsRect(w: number, h: number, slide: { width: number; height: number }) {
+  const scale = Math.min((slide.width * 0.8) / w, (slide.height * 0.8) / h);
+  const round = (v: number) => Math.round(v * 100) / 100;
+  const width = w * scale;
+  const height = h * scale;
+  return { left: round((slide.width - width) / 2), top: round((slide.height - height) / 2), width: round(width), height: round(height) };
+}
+
+/** Pictures keep a format that can hold transparency; everything else becomes JPEG. */
+export function outputType(name: string): "image/png" | "image/jpeg" {
+  return /\.(png|gif|webp)$/i.test(name) ? "image/png" : "image/jpeg";
+}
+
+// --- Storage ---
+
+const INDEX = "photo.index";
+const thumbKey = (id: string) => `photo.thumb.${id}`;
+
+export function createPhotoStore(store: Store) {
+  return {
+    index: () => store.get<PhotoIndex>(INDEX),
+    saveIndex: (index: PhotoIndex) => store.set(INDEX, index),
+    thumb: (id: string) => store.get<ArrayBuffer>(thumbKey(id)),
+    saveThumb: (id: string, data: ArrayBuffer) => store.set(thumbKey(id), data),
+    deleteThumb: (id: string) => store.del(thumbKey(id)),
+  };
+}
