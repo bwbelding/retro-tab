@@ -1,7 +1,7 @@
 // The photo picker's file reading and PowerPoint inserts. The model and geometry are in photos.ts.
 
 import { kv } from "./idb";
-import { asIsRect, createPhotoStore, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
+import { asIsRect, createPhotoStore, scanStats, type ScanStats, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
 import { currentSlide, slideSize, UserError } from "./ppt";
 
 export const photoStore = createPhotoStore(kv);
@@ -48,6 +48,7 @@ export interface ScanResult {
   added: number;
   removed: number;
   unreadable: number;
+  stats: ScanStats;
 }
 
 /**
@@ -85,7 +86,7 @@ export async function scanFolder(files: File[], progress: (p: ScanProgress) => v
   for (const id of gone) await photoStore.deleteThumb(id);
   const index: PhotoIndex = { root, scanned: new Date().toISOString(), photos };
   await photoStore.saveIndex(index);
-  return { index, added: plan.fresh.length - unreadable, removed: gone.length, unreadable };
+  return { index, added: plan.fresh.length - unreadable, removed: gone.length, unreadable, stats: scanStats(files) };
 }
 
 /** The photo cropped and sized for a target (points), as base64 without the data: prefix. */

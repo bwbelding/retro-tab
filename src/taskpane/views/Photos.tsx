@@ -116,6 +116,9 @@ export function Photos() {
       if (r.added) parts.push(`${r.added} new`);
       if (r.removed) parts.push(`${r.removed} removed`);
       if (r.unreadable) parts.push(`${r.unreadable} couldn't be read (formats PowerPoint can't open, or cloud files not downloaded to this Mac)`);
+      const st = r.stats;
+      parts.push(`Finder gave Retro ${st.files} files in ${st.folders} folder${st.folders === 1 ? "" : "s"}, ${st.depth} level${st.depth === 1 ? "" : "s"} of subfolders deep`);
+      if (st.skipped.length) parts.push(`not photos: ${st.skipped.slice(0, 6).map((x) => `${x.count} ${x.ext}`).join(", ")}${st.skipped.length > 6 ? ", …" : ""}`);
       pane.showMessage({ intent: r.unreadable ? "warning" : "success", text: `${parts.join(" · ")}.` });
     } catch (e) {
       pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof UserError ? e.message : describeError(e) });

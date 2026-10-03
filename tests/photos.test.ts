@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asIsRect, cropFor, filterPhotos, folderOf, isPhoto, outputSize, outputType, planScan, splitPath, topFolders, type PhotoEntry, type PickedFile } from "../src/lib/photos";
+import { asIsRect, cropFor, filterPhotos, folderOf, isPhoto, outputSize, outputType, planScan, scanStats, splitPath, topFolders, type PhotoEntry, type PickedFile } from "../src/lib/photos";
 
 const file = (path: string, size = 100, lastModified = 1): PickedFile => ({ name: path.split("/").pop()!, type: "", size, lastModified, webkitRelativePath: path });
 const entry = (id: string, size = 100, modified = 1): PhotoEntry => ({ id, name: id.split("/").pop()!, folder: folderOf(id), size, modified, width: 4000, height: 3000 });
@@ -12,6 +12,34 @@ describe("photo folder", () => {
     expect(isPhoto({ name: "._Paris.jpg", type: "image/jpeg" })).toBe(false);
     expect(isPhoto({ name: "notes.txt", type: "text/plain" })).toBe(false);
     expect(isPhoto({ name: "logo.svg", type: "image/svg+xml" })).toBe(false);
+  });
+
+  it("accepts other common photo extensions", () => {
+    for (const name of ["a.jfif", "a.jpe", "a.avif", "a.TIF"]) expect(isPhoto({ name, type: "" })).toBe(true);
+  });
+
+  it("reports what the folder picker returned, so missing photos can be traced", () => {
+    const stats = scanStats([
+      file("Photos/Cover.jpg"),
+      file("Photos/Cities/Paris.jpg"),
+      file("Photos/Cities/Europe/Rome.JPG"),
+      file("Photos/Cities/Europe/clip.mov"),
+      file("Photos/Raw/shot.CR2"),
+      file("Photos/Raw/shot2.cr2"),
+      file("Photos/.DS_Store"),
+      file("Photos/README"),
+    ]);
+    expect(stats).toEqual({
+      files: 8,
+      folders: 4,
+      depth: 2,
+      photos: 3,
+      skipped: [
+        { ext: ".cr2", count: 2 },
+        { ext: ".mov", count: 1 },
+        { ext: "(no extension)", count: 1 },
+      ],
+    });
   });
 
   it("splits paths into the folder and the path inside it", () => {

@@ -39,11 +39,48 @@ export interface PickedFile {
   webkitRelativePath: string;
 }
 
-const IMAGE = /\.(jpe?g|png|gif|webp|heic|heif|tiff?|bmp)$/i;
+const IMAGE = /\.(jpe?g|jpe|jfif|png|gif|webp|avif|heic|heif|tiff?|bmp)$/i;
 
 export function isPhoto(f: { name: string; type: string }): boolean {
   if (f.name.startsWith(".")) return false; // macOS ._ files and other hidden files
   return IMAGE.test(f.name) || (f.type.startsWith("image/") && f.type !== "image/svg+xml");
+}
+
+export interface ScanStats {
+  /** Every file the folder picker returned. */
+  files: number;
+  /** Folders those files are in, counting the chosen folder itself. */
+  folders: number;
+  /** How many levels of subfolders below the chosen folder held files. */
+  depth: number;
+  photos: number;
+  /** Files that aren't photos, by extension, most common first. */
+  skipped: { ext: string; count: number }[];
+}
+
+/** What the folder picker returned, so a scan can say where photos went missing. */
+export function scanStats(files: { name: string; type: string; webkitRelativePath: string }[]): ScanStats {
+  const folders = new Set<string>();
+  const skipped = new Map<string, number>();
+  let depth = 0;
+  let photos = 0;
+  for (const f of files) {
+    const parts = (f.webkitRelativePath || f.name).split("/");
+    folders.add(parts.slice(0, -1).join("/"));
+    depth = Math.max(depth, parts.length - 2);
+    if (isPhoto(f)) photos++;
+    else if (!f.name.startsWith(".")) {
+      const ext = f.name.includes(".") ? f.name.slice(f.name.lastIndexOf(".")).toLowerCase() : "(no extension)";
+      skipped.set(ext, (skipped.get(ext) ?? 0) + 1);
+    }
+  }
+  return {
+    files: files.length,
+    folders: folders.size,
+    depth,
+    photos,
+    skipped: [...skipped].map(([ext, count]) => ({ ext, count })).sort((a, b) => b.count - a.count || a.ext.localeCompare(b.ext)),
+  };
 }
 
 /** Split "Root/Cities/Paris.jpg" into the root folder name and the path inside it. */
