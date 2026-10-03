@@ -35,7 +35,7 @@ The repo (`bwbelding/retro-tab`) is empty apart from a README and LICENSE.
   - `manifests/icons.mjs` plus `scripts/build-icons.mjs`: ribbon icon artwork, rendered to PNG at 16/32/64/80 px
   - `manifests/office-control-ids.mjs`: the built-in control IDs Retro uses, checked against Microsoft's published list
   - `src/taskpane/`: one React app with a section bar and a view per section: Shapes, Photos, Layout, Brand, Tools, Check, More (Diagnostics)
-  - `src/commands/commands.ts`: handlers for buttons that run without the pane (from Phase 2)
+  - `src/commands/actions.ts`: what each Retro ribbon button does. Buttons run in the task pane's page (Office's shared runtime), so they act in one click and the pane opens only to report a result or problem.
   - `src/lib/`: `capabilities.ts` (API version checks), `diagnostics.ts`, `idb.ts` (IndexedDB storage); later `layout.ts`, `shapeRecipe.ts`, `photos.ts`, `quality.ts`, all unit tested
   - `install.html`: the install page served next to the add-in, with download buttons for both manifests
   - `.github/workflows/ci.yml`: lint → typecheck → test → build → Microsoft manifest validation on every PR; deploy to GitHub Pages on `main`
@@ -81,6 +81,17 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 - **Folder picking:** if PowerPoint's add-in window doesn't allow choosing a folder, the fallback is selecting all photos in the folder (⌘A) in the same Finder dialog. Phase 1 Diagnostics tests this.
 - **Licensing:** all photos are cleared for use, so no credit or expiry tracking.
 
+### Smart Elements
+Small editable status graphics made of ordinary PowerPoint shapes, tagged with their kind and value so the pane can change them later. Colours come from the brand kit.
+- **Numbered circle:** each new one takes the next number on the slide; renumber.
+- **Harvey ball:** 0%, 25%, 50%, 75% or 100% only (pie fill uses shape adjustments, PowerPointApi 1.10).
+- **Traffic light:** red / amber / green, single dot or three lights.
+- **Progress bar:** any percentage.
+- **Star rating:** 1–5.
+- **Checkbox:** ticked or empty.
+- **Arrow:** up / down / left / right.
+- **Trend indicator:** up (green), slightly up, flat (grey), slightly down, down (red).
+
 ### Layout tools
 Match width, height or size (to the first or last shape selected), swap positions, distribute with a fixed gap in points or cm, nudge by an exact amount, set exact X/Y/W/H for several shapes at once. All the geometry is pure functions in `layout.ts`.
 
@@ -102,7 +113,9 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
 ## Delivery phases
 0. **Design:** done. Canvas "Retro Tab UI" (ribbon tabs, all task panes, light and dark).
 1. **Skeleton + pipeline + restriction test:** both tabs (built-in buttons working, Retro buttons open the pane), the shared task pane with Diagnostics, the install page, CI and GitHub Pages deploy. **Checkpoint:** you install it and send me the Diagnostics report, including the folder-picking test.
-2. **Notes + Size & Position:** stickies, stamps, Remove All; Match Width/Height/Size, Swap, Gap Distribute, Nudge, Exact Size.
+2. **Notes, Size & Position, Smart Elements**, in two PRs:
+   - **2a:** stickies, stamps, Remove All; Match Width/Height/Size, Swap, Gap Distribute, Nudge, Exact Size. Buttons run in one click through the shared runtime.
+   - **2b:** Smart Elements (see Features), added from a **Smart ▾** menu in the Shapes group and edited in the Tools pane.
 3. **Shape library:** the capability test first, then the full feature, plus Backup/Restore.
 4. **Photos.**
 5. **Brand kit.**

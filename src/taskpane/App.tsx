@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { FluentProvider, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
+import { Button, FluentProvider, MessageBar, MessageBarActions, MessageBarBody, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
+import { DismissRegular } from "@fluentui/react-icons";
 import { darkTheme, lightTheme, prefersDark } from "./theme";
+import { pane, usePane } from "./store";
 import { VIEWS, type ViewKey } from "./views";
 import { Diagnostics } from "./views/Diagnostics";
+import { Layout } from "./views/Layout";
 import { Placeholder } from "./views/Placeholder";
+import { Tools } from "./views/Tools";
 
 const useStyles = makeStyles({
   root: {
@@ -44,11 +48,12 @@ const useStyles = makeStyles({
     borderBottomColor: tokens.colorBrandStroke1,
   },
   body: { flex: 1, minHeight: 0, overflowY: "auto" },
+  message: { margin: "8px 8px 0" },
 });
 
-export function App({ initialView, tab }: { initialView: ViewKey; tab: "build" | "polish" }) {
+export function App({ tab }: { tab: "build" | "polish" }) {
   const styles = useStyles();
-  const [view, setView] = useState<ViewKey>(initialView);
+  const { view, message } = usePane();
   const [dark, setDark] = useState(prefersDark);
 
   useEffect(() => {
@@ -58,12 +63,7 @@ export function App({ initialView, tab }: { initialView: ViewKey; tab: "build" |
     return () => media?.removeEventListener("change", update);
   }, []);
 
-  const go = (key: ViewKey) => {
-    setView(key);
-    const url = new URL(location.href);
-    url.searchParams.set("view", key);
-    history.replaceState(null, "", url);
-  };
+  const go = (key: ViewKey) => pane.setView(key);
 
   const current = VIEWS.find((v) => v.key === view)!;
 
@@ -85,7 +85,23 @@ export function App({ initialView, tab }: { initialView: ViewKey; tab: "build" |
         ))}
       </nav>
       <main className={styles.body}>
-        {view === "diagnostics" ? <Diagnostics tab={tab} /> : <Placeholder view={current} />}
+        {message && (
+          <MessageBar intent={message.intent} layout="multiline" className={styles.message}>
+            <MessageBarBody>{message.text}</MessageBarBody>
+            <MessageBarActions
+              containerAction={<Button appearance="transparent" aria-label="Dismiss" icon={<DismissRegular />} onClick={() => pane.showMessage(undefined)} />}
+            />
+          </MessageBar>
+        )}
+        {view === "diagnostics" ? (
+          <Diagnostics tab={tab} />
+        ) : view === "layout" ? (
+          <Layout />
+        ) : view === "tools" ? (
+          <Tools />
+        ) : (
+          <Placeholder view={current} />
+        )}
       </main>
     </FluentProvider>
   );

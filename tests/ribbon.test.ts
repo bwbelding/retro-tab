@@ -3,11 +3,12 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { ADDINS, MAX_CONTROLS_PER_GROUP, VIEWS as RIBBON_VIEWS } from "../manifests/ribbon.mjs";
 import { ICONS } from "../manifests/icons.mjs";
 import { OFFICE_CONTROL_IDS, TRIAL_CONTROL_IDS } from "../manifests/office-control-ids.mjs";
-import { buildManifest, iconsUsed } from "../scripts/build-manifests.mjs";
+import { buildManifest, functionFor, iconsUsed } from "../scripts/build-manifests.mjs";
+import { ACTION_NAMES, showActionFor } from "../src/commands/actionNames";
 import { VIEWS } from "../src/taskpane/views";
 import pkg from "../package.json";
 
-type Control = { office?: string; trial?: boolean; id?: string; view?: string; label?: string; tip?: string; menu?: Control[] };
+type Control = { office?: string; trial?: boolean; id?: string; view?: string; run?: string; label?: string; tip?: string; menu?: Control[] };
 
 describe("ribbon definition", () => {
   it("defines two add-ins with distinct GUIDs", () => {
@@ -35,7 +36,9 @@ describe("ribbon definition", () => {
     expect(new Set(all).size).toBe(all.length);
     for (const name of iconsUsed(addin)) expect(ICONS, name).toHaveProperty(name);
     for (const c of custom.flatMap((c) => (c.menu ? c.menu : [c]))) {
-      expect(RIBBON_VIEWS, c.id).toContain(c.view);
+      expect(Boolean(c.run) !== Boolean(c.view), `${c.id} needs exactly one of run or view`).toBe(true);
+      if (c.view) expect(RIBBON_VIEWS, c.id).toContain(c.view);
+      expect(ACTION_NAMES, c.id).toContain(functionFor(c));
       expect(c.label!.length).toBeLessThanOrEqual(125);
       expect(c.tip!.length).toBeLessThanOrEqual(250);
     }
@@ -48,6 +51,10 @@ describe("ribbon definition", () => {
   it("matches the task pane's views", () => {
     expect([...RIBBON_VIEWS].sort()).toEqual(VIEWS.map((v) => v.key).sort());
   });
+
+  it("names show functions the same way in the manifest and the pane", () => {
+    for (const view of RIBBON_VIEWS) expect(functionFor({ view })).toBe(showActionFor(view));
+  });
 });
 
 describe.each(ADDINS)("$name manifest", (addin) => {
@@ -56,6 +63,14 @@ describe.each(ADDINS)("$name manifest", (addin) => {
 
   it("is well-formed XML", () => {
     expect(XMLValidator.validate(xml)).toBe(true);
+  });
+
+  it("runs every button in one shared runtime", () => {
+    expect(xml).toContain('<Runtime resid="Taskpane.Url" lifetime="long"/>');
+    expect(xml).toContain('<FunctionFile resid="Taskpane.Url"/>');
+    expect(xml).toContain('<Set Name="SharedRuntime" MinVersion="1.1"/>');
+    expect(xml).toContain(`<bt:Url id="Taskpane.Url" DefaultValue="https://example.github.io/retro-tab/taskpane.html?tab=${addin.key}"/>`);
+    expect(xml).not.toContain("ShowTaskpane");
   });
 
   it("has exactly one custom tab", () => {

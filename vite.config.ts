@@ -15,7 +15,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
-      input: { taskpane: page("taskpane"), commands: page("commands"), install: page("install") },
+      input: { taskpane: page("taskpane"), install: page("install") },
     },
   },
   test: {
