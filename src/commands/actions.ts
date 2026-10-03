@@ -38,7 +38,14 @@ const stamp = (label: StampLabel): Action => ({
   },
 });
 
-const smart = (kind: SmartKind): Action => ({ view: "tools", run: () => insertSmart(kind) });
+/** Insert from the ribbon, then open the pane so the new (selected) element's value can be set. */
+const smart = (kind: SmartKind): Action => ({
+  view: "tools",
+  run: async () => {
+    await insertSmart(kind);
+    await pane.open("tools");
+  },
+});
 
 export const ACTIONS: Record<ActionName, Action> = {
   showShapes: show("shapes"),
