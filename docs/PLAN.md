@@ -71,7 +71,7 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 - **The live shapes:** fill, outline, fonts, text settings and shape adjustments, with theme colours already resolved, in the units the API takes back.
 
 **Inserting:**
-- **One click** for shapes Retro can rebuild exactly: any preset shape with solid or no fill, outline, text (fonts per run, alignment, margins, autofit), adjustments and rotation; straight lines; text boxes; uncropped pictures; and groups of these.
+- **One click** for shapes Retro can rebuild exactly (paragraph spacing, indents and bullets count as exact when they match what your template gives a new shape, since the API can't set them): any preset shape with solid or no fill, outline, text (fonts per run, alignment, margins, autofit), adjustments and rotation; straight lines; text boxes; uncropped pictures; and groups of these.
 - **Helper slide** for everything else (gradients, shadows and effects, arrowheads, freeforms, SVG icons, cropped pictures, charts, tables, SmartArt): Retro inserts an exact copy of the saved shapes on a new slide after the current one, already selected. You press ⌘X, go back and press ⌘V.
 - Each library item shows which route it takes and why.
 
