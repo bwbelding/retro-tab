@@ -6,7 +6,7 @@ import { matchSize, swapPositions, type Dimension } from "../lib/layout";
 import { addStamp, addSticky, scanNotes, type StampLabel } from "../lib/notes";
 import { applyRects, requireSelection, selectedShapes, UserError } from "../lib/ppt";
 import { prefs } from "../lib/prefs";
-import { insertSmart, renumberSlide, type SmartKind } from "../lib/smart";
+import { insertSmart, insertSmartSet, renumberSlide, type SmartKind } from "../lib/smart";
 import { pane } from "../taskpane/store";
 import type { ViewKey } from "../taskpane/views";
 import type { ActionName } from "./actionNames";
@@ -99,6 +99,8 @@ export const ACTIONS: Record<ActionName, Action> = {
   insertCheckbox: smart("checkbox"),
   insertArrow: smart("arrow"),
   insertTrend: smart("trend"),
+  insertNumberSet: { view: "tools", run: async () => void (await insertSmartSet("number", 10)) },
+  insertHarveySet: { view: "tools", run: async () => void (await insertSmartSet("harvey")) },
   renumberCircles: {
     view: "tools",
     run: async () => {

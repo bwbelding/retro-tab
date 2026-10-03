@@ -108,3 +108,40 @@ describe("placeFor", () => {
     expect(at).toEqual({ left: 308, top: 111, width: 28, height: 28 });
   });
 });
+
+describe("sets", () => {
+  it("lists every Harvey quarter and numbers 1..n (capped at 20)", async () => {
+    const { setValues } = await import("../src/lib/smart");
+    expect(setValues("harvey")).toEqual(["0", "25", "50", "75", "100"]);
+    expect(setValues("number", 10)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+    expect(setValues("number", 50)).toHaveLength(20);
+    expect(setValues("number", 0)).toEqual(["1"]);
+  });
+
+  it("lays a set out in a centred row with even gaps", async () => {
+    const { setBoxes } = await import("../src/lib/smart");
+    const boxes = setBoxes("harvey", 5, { width: 960, height: 540 }, []);
+    expect(boxes).toHaveLength(5);
+    expect(boxes.every((b) => b.top === boxes[0].top)).toBe(true);
+    expect(boxes[1].left - boxes[0].left).toBe(24 + 8);
+    const blockW = 5 * 24 + 4 * 8;
+    expect(boxes[0].left).toBe((960 - blockW) / 2);
+  });
+
+  it("wraps onto more rows when the slide is too narrow", async () => {
+    const { setBoxes } = await import("../src/lib/smart");
+    const boxes = setBoxes("number", 20, { width: 300, height: 540 }, []);
+    const rows = new Set(boxes.map((b) => b.top)).size;
+    expect(rows).toBeGreaterThan(1);
+    for (const b of boxes) {
+      expect(b.left).toBeGreaterThanOrEqual(0);
+      expect(b.left + b.width).toBeLessThanOrEqual(300);
+    }
+  });
+
+  it("sits right of the selection when there's room", async () => {
+    const { setBoxes } = await import("../src/lib/smart");
+    const boxes = setBoxes("harvey", 5, { width: 960, height: 540 }, [{ id: "x", left: 100, top: 100, width: 200, height: 50 }]);
+    expect(boxes[0]).toMatchObject({ left: 308, top: 100 });
+  });
+});

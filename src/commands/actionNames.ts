@@ -24,6 +24,8 @@ export const DO_ACTIONS = [
   "insertArrow",
   "insertTrend",
   "renumberCircles",
+  "insertNumberSet",
+  "insertHarveySet",
 ] as const;
 
 export type ActionName = (typeof SHOW_ACTIONS)[number] | (typeof DO_ACTIONS)[number];

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Field, Input, Text } from "@fluentui/react-components";
 import { activity, describeError } from "../../lib/activity";
 import { UserError } from "../../lib/ppt";
-import { insertSmart, renumberSlide, SMART, SMART_KINDS, updateSmart, type SmartKind, type SmartSelection } from "../../lib/smart";
+import { insertSmart, insertSmartSet, renumberSlide, SMART, SMART_KINDS, updateSmart, type SmartKind, type SmartSelection } from "../../lib/smart";
 import { pane } from "../store";
 import { Section, Seg, useUi } from "../ui";
 
@@ -76,9 +76,15 @@ export function SmartEditor({ selected, refresh }: { selected: SmartSelection; r
 /** Buttons that insert each kind of Smart Element. */
 export function SmartInsert({ hasSelection, refresh }: { hasSelection: boolean; refresh: () => void }) {
   const ui = useUi();
+  const [count, setCount] = useState("10");
   const insert = (kind: SmartKind) =>
     report(async () => {
       await insertSmart(kind);
+      refresh();
+    });
+  const insertSet = (kind: "number" | "harvey") =>
+    report(async () => {
+      await insertSmartSet(kind, Number(count) || 10);
       refresh();
     });
 
@@ -91,6 +97,16 @@ export function SmartInsert({ hasSelection, refresh }: { hasSelection: boolean; 
           </Button>
         ))}
       </div>
+      <Text weight="semibold">Insert a set</Text>
+      <div className={ui.row}>
+        <Field label="Circles 1 to" style={{ width: 96 }}>
+          <Input type="number" min={1} max={20} value={count} onChange={(_, d) => setCount(d.value)} />
+        </Field>
+        <Button onClick={() => void insertSet("number")}>Insert circles</Button>
+      </div>
+      <Button style={{ alignSelf: "flex-start" }} onClick={() => void insertSet("harvey")}>
+        Harvey balls 0–100%
+      </Button>
       {!hasSelection && (
         <Text size={200} className={ui.muted}>
           Select a Smart Element on the slide to change it; its controls appear at the top of this pane. Click the element's edge so the whole element is selected.
