@@ -8,7 +8,7 @@ export const OFFICE_CONTROL_IDS = new Set([
   "TableInsertGallery",
   "FlyoutAnchorInsertPicture",
   "FontSizeIncrease",
-  "FontSizeDecrese",
+  "FontSizeDecrease", // Published as "FontSizeDecrese", which showed nothing on PowerPoint for Mac.
   "Bold",
   "BulletsGallery",
   "LineSpacingGalleryPowerPoint",

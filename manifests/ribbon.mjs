@@ -78,7 +78,9 @@ export const ADDINS = [
         icon: "text",
         controls: [
           { office: "FontSizeIncrease" },
-          { office: "FontSizeDecrese" }, // sic: Microsoft's published ID is misspelled.
+          // Microsoft's published list spells this "FontSizeDecrese", but that ID showed nothing on
+          // PowerPoint for Mac 16.113. "FontSizeDecrease" is the standard Office ID.
+          { office: "FontSizeDecrease" },
           { office: "Bold" },
           { office: "BulletsGallery" },
           { office: "LineSpacingGalleryPowerPoint" },
