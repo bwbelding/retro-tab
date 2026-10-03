@@ -5,6 +5,7 @@ import { ICONS } from "../manifests/icons.mjs";
 import { OFFICE_CONTROL_IDS } from "../manifests/office-control-ids.mjs";
 import { buildManifest, iconsUsed } from "../scripts/build-manifests.mjs";
 import { VIEWS } from "../src/taskpane/views";
+import pkg from "../package.json";
 
 type Control = { office?: string; id?: string; view?: string; label?: string; tip?: string; menu?: Control[] };
 
@@ -35,6 +36,10 @@ describe("ribbon definition", () => {
       expect(c.label!.length).toBeLessThanOrEqual(125);
       expect(c.tip!.length).toBeLessThanOrEqual(250);
     }
+  });
+
+  it("has a version Microsoft's validator accepts (1.0 or higher)", () => {
+    expect(Number(pkg.version.split(".")[0])).toBeGreaterThanOrEqual(1);
   });
 
   it("matches the task pane's views", () => {

@@ -57,7 +57,7 @@ describe("probeRequirements", () => {
 describe("formatReport", () => {
   it("lists environment, features and checks", () => {
     const text = formatReport(
-      { host: "PowerPoint", platform: "Mac", officeVersion: "16.102", tab: "Retro Build", retroVersion: "0.1.0", origin: "https://x", userAgent: "UA" },
+      { host: "PowerPoint", platform: "Mac", officeVersion: "16.102", tab: "Retro Build", retroVersion: "1.0.0", origin: "https://x", userAgent: "UA" },
       probeRequirements((set, v) => !(set === "PowerPointApi" && v === "1.10")),
       [{ id: "s", label: "Saving on this Mac", status: "ok", detail: "Works." }],
       new Date("2026-10-03T00:00:00Z"),
