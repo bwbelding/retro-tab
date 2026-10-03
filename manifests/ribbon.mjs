@@ -6,8 +6,10 @@
 //   { office: "Bold" }                          PowerPoint's own button (OfficeControl).
 //                                               IDs come from github.com/OfficeDev/office-control-ids.
 //   { office: "X", trial: true }                An unconfirmed ID being tried on Mac (see office-control-ids.mjs).
+//   { id, label, tip, icon, run }               Retro button that acts in one click: `run` names a
+//                                               function in src/commands/actions.ts.
 //   { id, label, tip, icon, view }              Retro button that opens the task pane at `view`.
-//   { id, label, tip, icon, menu: [items] }     Retro dropdown; each item opens the pane at its view.
+//   { id, label, tip, icon, menu: [items] }     Retro dropdown; each item has its own run or view.
 
 /** Views the task pane can open at (src/taskpane/views.ts must list the same keys). */
 export const VIEWS = ["shapes", "photos", "layout", "brand", "tools", "check", "diagnostics"];
@@ -15,41 +17,41 @@ export const VIEWS = ["shapes", "photos", "layout", "brand", "tools", "check", "
 /** Max controls per group, enforced by Office. */
 export const MAX_CONTROLS_PER_GROUP = 6;
 
-/** @type {Array<{key: string, id: string, name: string, description: string, defaultView: string, groups: any[]}>} */
+/** @type {Array<{key: string, id: string, name: string, description: string, groups: any[]}>} */
 export const ADDINS = [
   {
     key: "build",
     id: "2cb84a06-4c49-421a-8781-d95ae2ddb2ab",
     name: "Retro Build",
     description: "Make, note and arrange slide content: stickies, shapes, photos, text and layout tools.",
-    defaultView: "shapes",
     groups: [
       {
         id: "Notes",
         label: "Notes",
         icon: "sticky",
         controls: [
-          { id: "StickyNote", label: "Sticky Note", tip: "Add a sticky note to this slide.", icon: "sticky", view: "tools" },
+          { id: "StickyNote", label: "Sticky Note", tip: "Add a sticky note to this slide.", icon: "sticky", run: "addSticky" },
           {
             id: "Stamp",
             label: "Stamp",
             tip: "Stamp this slide or every slide.",
             icon: "stamp",
             menu: [
-              { id: "StampDraft", label: "DRAFT", tip: "Stamp DRAFT on this slide.", icon: "stamp", view: "tools" },
-              { id: "StampConfidential", label: "CONFIDENTIAL", tip: "Stamp CONFIDENTIAL on this slide.", icon: "stamp", view: "tools" },
-              { id: "StampReview", label: "FOR REVIEW", tip: "Stamp FOR REVIEW on this slide.", icon: "stamp", view: "tools" },
+              { id: "StampDraft", label: "DRAFT", tip: "Stamp DRAFT on this slide.", icon: "stamp", run: "stampDraft" },
+              { id: "StampConfidential", label: "CONFIDENTIAL", tip: "Stamp CONFIDENTIAL on this slide.", icon: "stamp", run: "stampConfidential" },
+              { id: "StampReview", label: "FOR REVIEW", tip: "Stamp FOR REVIEW on this slide.", icon: "stamp", run: "stampReview" },
             ],
           },
-          { id: "RemoveNotes", label: "Remove All", tip: "Remove every sticky note and stamp Retro added.", icon: "removeNotes", view: "tools" },
+          { id: "RemoveNotes", label: "Remove All", tip: "Remove every sticky note and stamp Retro added, on every slide.", icon: "removeNotes", run: "removeNotes" },
         ],
       },
       {
         id: "Shapes",
         label: "Shapes",
         icon: "library",
+        // Retro's buttons first and PowerPoint's last: PowerPoint for Mac picks button sizes itself and
+        // shows built-in controls small, so this keeps large buttons on the left of each group.
         controls: [
-          { office: "ShapesInsertGallery" },
           { id: "ShapeLibrary", label: "My Library", tip: "Browse and insert your saved shapes.", icon: "library", view: "shapes" },
           { id: "SaveShape", label: "Save to Library", tip: "Save the selected shapes to your library.", icon: "saveShape", view: "shapes" },
           {
@@ -59,6 +61,7 @@ export const ADDINS = [
             icon: "recent",
             menu: [{ id: "RecentOpen", label: "Show recent shapes", tip: "Open the library at Recent.", icon: "recent", view: "shapes" }],
           },
+          { office: "ShapesInsertGallery" },
         ],
       },
       {
@@ -105,10 +108,10 @@ export const ADDINS = [
         label: "Size & Position",
         icon: "matchSize",
         controls: [
-          { id: "MatchWidth", label: "Match Width", tip: "Make selected shapes the same width.", icon: "matchWidth", view: "layout" },
-          { id: "MatchHeight", label: "Match Height", tip: "Make selected shapes the same height.", icon: "matchHeight", view: "layout" },
-          { id: "MatchSize", label: "Match Size", tip: "Make selected shapes the same size.", icon: "matchSize", view: "layout" },
-          { id: "Swap", label: "Swap Positions", tip: "Swap the positions of two shapes.", icon: "swap", view: "layout" },
+          { id: "MatchWidth", label: "Match Width", tip: "Make selected shapes the same width.", icon: "matchWidth", run: "matchWidth" },
+          { id: "MatchHeight", label: "Match Height", tip: "Make selected shapes the same height.", icon: "matchHeight", run: "matchHeight" },
+          { id: "MatchSize", label: "Match Size", tip: "Make selected shapes the same size.", icon: "matchSize", run: "matchSize" },
+          { id: "Swap", label: "Swap Positions", tip: "Swap the positions of two shapes.", icon: "swap", run: "swapPositions" },
           { id: "GapDistribute", label: "Gap Distribute…", tip: "Space shapes with an exact gap.", icon: "gapDistribute", view: "layout" },
           { id: "ExactSize", label: "Exact Size…", tip: "Set exact size and position.", icon: "exactSize", view: "layout" },
         ],
@@ -120,7 +123,6 @@ export const ADDINS = [
     id: "f75ca145-5a6d-42b3-9ca6-0c150b1b94a6",
     name: "Retro Polish",
     description: "Style and review slides: formatting, brand kit, deck check and Retro diagnostics.",
-    defaultView: "brand",
     groups: [
       {
         id: "Format",
@@ -139,10 +141,10 @@ export const ADDINS = [
         icon: "brandKit",
         controls: [
           { id: "BrandKit", label: "Brand Kit", tip: "Your brand colors and fonts.", icon: "brandKit", view: "brand" },
+          { id: "ApplyFonts", label: "Apply Fonts", tip: "Apply brand heading and body fonts.", icon: "applyFonts", view: "brand" },
           { id: "Fill1", label: "Fill 1", tip: "Fill the selection with brand color 1.", icon: "fill1", view: "brand" },
           { id: "Fill2", label: "Fill 2", tip: "Fill the selection with brand color 2.", icon: "fill2", view: "brand" },
           { id: "Fill3", label: "Fill 3", tip: "Fill the selection with brand color 3.", icon: "fill3", view: "brand" },
-          { id: "ApplyFonts", label: "Apply Fonts", tip: "Apply brand heading and body fonts.", icon: "applyFonts", view: "brand" },
         ],
       },
       {

@@ -7,7 +7,12 @@ import { ADDINS } from "../manifests/ribbon.mjs";
 
 export const DEFAULT_BASE_URL = "https://bwbelding.github.io/retro-tab";
 export const ICON_SIZES = [16, 32, 80];
-const TASKPANE_ID = "RetroPane";
+// The shared runtime's page. Microsoft's instructions use this resource id in every place the
+// runtime is referenced, and the runtime won't load if they differ.
+const RUNTIME_RESID = "Taskpane.Url";
+
+/** Buttons with a `view` run show<View> (src/commands/actionNames.ts lists every function). */
+export const functionFor = (c) => c.run ?? `show${c.view[0].toUpperCase()}${c.view.slice(1)}`;
 
 const esc = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -29,22 +34,16 @@ export function iconsUsed(addin) {
 export function buildManifest(addin, { baseUrl = DEFAULT_BASE_URL, version = "0.0.0" } = {}) {
   const base = baseUrl.replace(/\/$/, "");
   const origin = new URL(base).origin;
-  const viewUrl = (view) => `${base}/taskpane.html?tab=${addin.key}&view=${view}`;
+  const runtimeUrl = `${base}/taskpane.html?tab=${addin.key}`;
 
   // Resource ids are limited to 32 characters, so they're short and sequential.
   const shortStrings = [];
   const longStrings = [];
-  const urls = new Map();
   const short = (text) => (shortStrings.push(text), `S${shortStrings.length}`);
   const long = (text) => (longStrings.push(text), `L${longStrings.length}`);
-  const url = (href) => {
-    if (!urls.has(href)) urls.set(href, `U${urls.size + 1}`);
-    return urls.get(href);
-  };
   const icon = (name) =>
     `<Icon>${ICON_SIZES.map((s) => `<bt:Image size="${s}" resid="I.${name}.${s}"/>`).join("")}</Icon>`;
-  const action = (view) =>
-    `<Action xsi:type="ShowTaskpane"><TaskpaneId>${TASKPANE_ID}</TaskpaneId><SourceLocation resid="${url(viewUrl(view))}"/></Action>`;
+  const action = (c) => `<Action xsi:type="ExecuteFunction"><FunctionName>${esc(functionFor(c))}</FunctionName></Action>`;
   const tip = (c) => `<Supertip><Title resid="${short(c.label)}"/><Description resid="${long(c.tip)}"/></Supertip>`;
   const id = (local) => `${addin.key}.${local}`;
 
@@ -52,18 +51,17 @@ export function buildManifest(addin, { baseUrl = DEFAULT_BASE_URL, version = "0.
     if (c.office) return `<OfficeControl id="${esc(c.office)}"/>`;
     if (c.menu) {
       const items = c.menu
-        .map((it) => `<Item id="${id(it.id)}"><Label resid="${short(it.label)}"/>${tip(it)}${icon(it.icon)}${action(it.view)}</Item>`)
+        .map((it) => `<Item id="${id(it.id)}"><Label resid="${short(it.label)}"/>${tip(it)}${icon(it.icon)}${action(it)}</Item>`)
         .join("");
       return `<Control xsi:type="Menu" id="${id(c.id)}"><Label resid="${short(c.label)}"/>${tip(c)}${icon(c.icon)}<Items>${items}</Items></Control>`;
     }
-    return `<Control xsi:type="Button" id="${id(c.id)}"><Label resid="${short(c.label)}"/>${tip(c)}${icon(c.icon)}${action(c.view)}</Control>`;
+    return `<Control xsi:type="Button" id="${id(c.id)}"><Label resid="${short(c.label)}"/>${tip(c)}${icon(c.icon)}${action(c)}</Control>`;
   };
 
   const groups = addin.groups
     .map((g) => `<Group id="${id(g.id)}"><Label resid="${short(g.label)}"/>${icon(g.icon)}${g.controls.map(control).join("")}</Group>`)
     .join("\n");
   const tabLabel = short(addin.name);
-  const commandsUrl = url(`${base}/commands.html`);
 
   const images = iconsUsed(addin)
     .flatMap((name) => ICON_SIZES.map((s) => `<bt:Image id="I.${name}.${s}" DefaultValue="${esc(`${base}/assets/icons/${name}-${s}.png`)}"/>`))
@@ -89,15 +87,23 @@ export function buildManifest(addin, { baseUrl = DEFAULT_BASE_URL, version = "0.
   <Hosts>
     <Host Name="Presentation"/>
   </Hosts>
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="SharedRuntime" MinVersion="1.1"/>
+    </Sets>
+  </Requirements>
   <DefaultSettings>
-    <SourceLocation DefaultValue="${esc(viewUrl(addin.defaultView))}"/>
+    <SourceLocation DefaultValue="${esc(runtimeUrl)}"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>
       <Host xsi:type="Presentation">
+        <Runtimes>
+          <Runtime resid="${RUNTIME_RESID}" lifetime="long"/>
+        </Runtimes>
         <DesktopFormFactor>
-          <FunctionFile resid="${commandsUrl}"/>
+          <FunctionFile resid="${RUNTIME_RESID}"/>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <CustomTab id="${id("Tab")}">
 ${groups}
@@ -112,7 +118,7 @@ ${groups}
 ${images}
       </bt:Images>
       <bt:Urls>
-${[...urls].map(([href, rid]) => `<bt:Url id="${rid}" DefaultValue="${esc(href)}"/>`).join("\n")}
+<bt:Url id="${RUNTIME_RESID}" DefaultValue="${esc(runtimeUrl)}"/>
       </bt:Urls>
       <bt:ShortStrings>
 ${shortStrings.map((t, i) => `<bt:String id="S${i + 1}" DefaultValue="${esc(t)}"/>`).join("\n")}

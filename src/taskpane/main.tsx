@@ -1,9 +1,14 @@
 import { createRoot } from "react-dom/client";
+import { registerActions } from "../commands/actions";
 import { App } from "./App";
+import { pane } from "./store";
 import { tabFromUrl, viewFromUrl } from "./views";
 
 function start() {
-  createRoot(document.getElementById("root")!).render(<App initialView={viewFromUrl(location.search)} tab={tabFromUrl(location.search)} />);
+  pane.init(viewFromUrl(location.search));
+  // Ribbon buttons run in this page (shared runtime), so their functions are registered here.
+  if (typeof Office !== "undefined" && Office.actions) registerActions();
+  createRoot(document.getElementById("root")!).render(<App tab={tabFromUrl(location.search)} />);
 }
 
 // Inside PowerPoint, wait for Office.js; opened in a plain browser, render anyway so the
