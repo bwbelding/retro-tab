@@ -23,7 +23,7 @@ export interface ViewInfo {
 }
 
 export const VIEWS: ViewInfo[] = [
-  { key: "shapes", nav: "Shapes", title: "Shape library", icon: ShapesRegular, coming: "Save your own shapes and insert them in one click. Arrives in Phase 3." },
+  { key: "shapes", nav: "Shapes", title: "Shape library", icon: ShapesRegular },
   { key: "photos", nav: "Photos", title: "Photos", icon: ImageRegular, coming: "Browse your licensed photo folder and place photos as full bleeds, boxes or backgrounds. Arrives in Phase 4." },
   { key: "layout", nav: "Layout", title: "Size & position", icon: ResizeRegular },
   { key: "brand", nav: "Brand", title: "Brand kit", icon: ColorRegular, coming: "Saved brand colors and fonts with one-click apply. Arrives in Phase 5." },

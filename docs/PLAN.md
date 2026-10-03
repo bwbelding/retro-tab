@@ -66,12 +66,20 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 ## Features
 
 ### Shape library (the hardest part technically)
-- **Save:** select shapes, click *Save to Library*, enter a name and category. A preview thumbnail is stored with it.
-- **Primary save method, the "recipe":** the add-in reads the shape's type, geometry, size, fill, line, text and font, and for groups, all of their children (group APIs need API 1.8). It saves that as JSON and rebuilds the shape exactly on insert. This covers styled shapes, callouts, badges, labels, lines and groups.
-- **Fallback, "slide snippet":** for things the API can't read (freeforms, SmartArt, charts), the add-in exports the slide with `slide.exportAsBase64()` (API 1.8) and puts it back with `insertSlidesFromBase64`. That inserts a ready-made slide; Office.js has no way to move a shape between slides.
-- **Import SVG/PNG** files as library items. They're inserted with `setSelectedDataAsync`. SVGs can then be turned into editable shapes with *Convert to Shape*.
-- **Library pane:** search, categories, favourites, drag to reorder, rename or delete, export/import.
-- **Phase 3 starts with a short test on your actual PowerPoint version** to confirm which shape properties can be read back. The recipe-versus-snippet split above is adjusted to whatever that test shows.
+**What the API allows (checked against the Office.js typings for PowerPointApi 1.10):** PowerPoint can *create* any of its 177 preset shapes but can't *report* which one a shape is (only "a geometric shape"), and it can't set flips, arrowheads, gradients, shadows or other effects. So Retro reads a saved shape from two places:
+- **The slide exported as a .pptx** (`slide.exportAsBase64`, API 1.8): the shape type (chevron, callout, …), flips, how text splits into runs, embedded pictures, and anything the API couldn't recreate. Retro marks the selected shapes with a temporary tag so it can find them in the file, then removes the tag.
+- **The live shapes:** fill, outline, fonts, text settings and shape adjustments, with theme colours already resolved, in the units the API takes back.
+
+**Inserting:**
+- **One click** for shapes Retro can rebuild exactly: any preset shape with solid or no fill, outline, text (fonts per run, alignment, margins, autofit), adjustments and rotation; straight lines; text boxes; uncropped pictures; and groups of these.
+- **Helper slide** for everything else (gradients, shadows and effects, arrowheads, freeforms, SVG icons, cropped pictures, charts, tables, SmartArt): Retro inserts an exact copy of the saved shapes on a new slide after the current one, already selected. You press ⌘X, go back and press ⌘V.
+- Each library item shows which route it takes and why.
+
+**Rest of the library:** a preview picture of each item (`shape.getImageAsBase64`, API 1.10), search, categories, favourites, rename or delete, Recent ▾ on the ribbon, and Backup/Restore (.json) for the library and settings.
+
+**Phase 3a (this step):** a **Test selected shapes** tool in the Shapes pane. It captures your shapes, rebuilds what it can beside the originals, captures the copies and lists any differences. **Try the helper slide** tests the other route. Your results decide the details of 3b.
+
+**Phase 3b:** the library itself, built on whatever 3a shows works.
 
 ### Photos (licensed photo picker)
 - **Source:** one folder you choose: local, or OneDrive / Box through their Finder-synced folders (no sign-in or IT approval). Subfolders become filters. **Change** switches folders.
@@ -116,7 +124,9 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
 2. **Notes, Size & Position, Smart Elements**, in two PRs:
    - **2a:** stickies, stamps, Remove All; Match Width/Height/Size, Swap, Gap Distribute, Nudge, Exact Size. Buttons run in one click through the shared runtime.
    - **2b:** Smart Elements (see Features), added from a **Smart ▾** menu in the Shapes group and edited in the Tools pane.
-3. **Shape library:** the capability test first, then the full feature, plus Backup/Restore.
+3. **Shape library**, in two PRs:
+   - **3a:** the shape capture engine and a test tool in the Shapes pane, run on your Mac.
+   - **3b:** the library (save, preview, search, categories, insert, Recent ▾) plus Backup/Restore.
 4. **Photos.**
 5. **Brand kit.**
 6. **Section tracker + Deck check.**

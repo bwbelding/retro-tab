@@ -69,7 +69,7 @@ const useStyles = makeStyles({
 const ICON = { ok: CheckmarkCircleRegular, warn: WarningRegular, fail: DismissCircleRegular } as const;
 const LABEL = { ok: "OK", warn: "Warning", fail: "Failed" } as const;
 
-function StatusIcon({ status }: { status: Status }) {
+export function StatusIcon({ status }: { status: Status }) {
   const styles = useStyles();
   if (status === "pending") return <Spinner size="extra-tiny" aria-label="Checking" />;
   const Icon = ICON[status];
