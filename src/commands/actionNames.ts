@@ -14,6 +14,16 @@ export const DO_ACTIONS = [
   "matchHeight",
   "matchSize",
   "swapPositions",
+  "insertNumber",
+  "insertHarvey",
+  "insertTraffic",
+  "insertTraffic3",
+  "insertProgress",
+  "insertStars",
+  "insertCheckbox",
+  "insertArrow",
+  "insertTrend",
+  "renumberCircles",
 ] as const;
 
 export type ActionName = (typeof SHOW_ACTIONS)[number] | (typeof DO_ACTIONS)[number];

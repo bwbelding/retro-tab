@@ -20,7 +20,7 @@ export const REQUIREMENTS: Requirement[] = [
   { set: "PowerPointApi", version: "1.4", label: "Create and style shapes", unlocks: "Stickies, stamps, brand fills" },
   { set: "PowerPointApi", version: "1.5", label: "Read and change the selection", unlocks: "Size & Position tools, Deck Check “Go to”", macMin: "16.64" },
   { set: "PowerPointApi", version: "1.8", label: "Groups, tables, slide export", unlocks: "Shape library groups and slide snippets", macMin: "16.96" },
-  { set: "PowerPointApi", version: "1.10", label: "Alt text and slide backgrounds", unlocks: "Deck Check alt-text rule, Photos → Background", macMin: "16.105" },
+  { set: "PowerPointApi", version: "1.10", label: "Alt text and slide backgrounds", unlocks: "Smart Elements, Deck Check alt-text rule, Photos → Background", macMin: "16.105" },
   { set: "ImageCoercion", version: "1.1", label: "Insert pictures", unlocks: "Photos" },
   { set: "ImageCoercion", version: "1.2", label: "Insert SVG images", unlocks: "SVG items in the shape library" },
   { set: "SharedRuntime", version: "1.1", label: "Shared runtime", unlocks: "One-click ribbon buttons without opening the pane" },
