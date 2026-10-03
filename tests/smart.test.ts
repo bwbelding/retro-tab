@@ -31,12 +31,15 @@ describe("partsFor", () => {
     }
   });
 
-  it("builds Harvey balls from a ring and a pie in quarters", () => {
-    expect(partsFor("harvey", "0", box)).toHaveLength(1);
-    expect(partsFor("harvey", "100", box)[0].fill).toBe("#333F48");
+  it("builds Harvey balls from a ring and a pie in quarters, 0% solid and 100% empty", () => {
+    const empty = partsFor("harvey", "100", box);
+    expect(empty).toHaveLength(1);
+    expect(empty[0].fill).toBe("#FFFFFF");
+    expect(partsFor("harvey", "0", box)[0].fill).toBe("#333F48");
     const half = partsFor("harvey", "50", box);
     expect(half.map((p) => p.shape)).toEqual(["Ellipse", "Pie"]);
     expect(half[1].pieFraction).toBe(0.5);
+    expect(partsFor("harvey", "25", box)[1].pieFraction).toBe(0.75);
   });
 
   it("fills the progress bar to the percentage", () => {

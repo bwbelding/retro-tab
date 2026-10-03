@@ -149,7 +149,8 @@ export function partsFor(kind: SmartKind, rawValue: string, box: Box): Part[] {
         },
       ];
     case "harvey": {
-      const p = Number(value) / 100;
+      // Reversed by request: 0% is a solid ball and 100% an empty ring.
+      const p = 1 - Number(value) / 100;
       const ring: Part = { shape: "Ellipse", ...full, fill: COLORS.white, line: { color: COLORS.ink, weight: 1 } };
       if (p === 0) return [ring];
       if (p === 1) return [{ ...ring, fill: COLORS.ink }];

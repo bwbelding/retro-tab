@@ -7,6 +7,7 @@ import { VIEWS, type ViewKey } from "./views";
 import { Diagnostics } from "./views/Diagnostics";
 import { Layout } from "./views/Layout";
 import { Placeholder } from "./views/Placeholder";
+import { Shapes } from "./views/Shapes";
 import { Tools } from "./views/Tools";
 
 const useStyles = makeStyles({
@@ -99,6 +100,8 @@ export function App({ tab }: { tab: "build" | "polish" }) {
           <Layout />
         ) : view === "tools" ? (
           <Tools />
+        ) : view === "shapes" ? (
+          <Shapes />
         ) : (
           <Placeholder view={current} />
         )}
