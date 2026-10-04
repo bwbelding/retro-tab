@@ -60,7 +60,7 @@ const useStyles = makeStyles({
 const PLACEMENTS: { value: Placement; label: string; help: string }[] = [
   { value: "full", label: "Full bleed", help: "Covers the whole slide, behind everything else, cropped to fit." },
   { value: "box", label: "Fill box", help: "Fills the selected shape (rectangle, circle, rounded box…), cropped to its shape." },
-  { value: "background", label: "Background", help: "Becomes this slide's background, cropped to fit." },
+  { value: "background", label: "Background", help: "Replaces this slide's background, cropped to fit, and hides the template's background graphics on this slide." },
   { value: "asis", label: "As is", help: "The whole photo, uncropped, centered on the slide." },
 ];
 
@@ -235,7 +235,7 @@ export function Photos() {
                   Reconnect
                 </Button>
               )}
-              <Button appearance="subtle" icon={<FolderOpenRegular />} onClick={() => input.current?.click()} disabled={Boolean(progress)}>
+              <Button icon={<FolderOpenRegular />} onClick={() => input.current?.click()} disabled={Boolean(progress)}>
                 Change folder…
               </Button>
             </div>
@@ -288,7 +288,7 @@ export function Photos() {
                         {name}
                       </Text>
                     ) : (
-                      <Button size="small" appearance="transparent" onClick={() => openFolder(path)}>
+                      <Button size="small" appearance="outline" onClick={() => openFolder(path)}>
                         {name}
                       </Button>
                     )}

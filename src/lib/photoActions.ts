@@ -197,10 +197,13 @@ export async function insertPhoto(photo: PhotoEntry, placement: Placement, ancho
     await PowerPoint.run(async (context) => {
       const s = await currentSlide(context);
       s.background.isMasterBackgroundFollowed = false;
+      // Replace the template's background completely: its layout graphics (patterns, logos)
+      // would otherwise still draw on top, like PowerPoint's "Hide background graphics".
+      s.background.areBackgroundGraphicsHidden = true;
       s.background.fill.setPictureOrTextureFill({ imageBase64: pic.base64, transparency: 0 });
       await context.sync();
     });
-    return `Set “${photo.name}” as this slide's background.`;
+    return `Set “${photo.name}” as this slide's background, with the template's background graphics hidden on this slide.`;
   }
 
   const pic = await prepare(photo, placement === "full" ? slide : undefined, anchor, slide);

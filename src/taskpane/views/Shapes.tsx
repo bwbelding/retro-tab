@@ -46,7 +46,7 @@ const useStyles = makeStyles({
     backgroundImage: "linear-gradient(45deg, #a2a2a2 25%, transparent 25%, transparent 75%, #a2a2a2 75%), linear-gradient(45deg, #a2a2a2 25%, transparent 25%, transparent 75%, #a2a2a2 75%)",
     backgroundSize: "12px 12px",
     backgroundPosition: "0 0, 6px 6px",
-    border: "none",
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     padding: "4px",
     cursor: "pointer",
     ":hover": { filter: "brightness(1.06)" },
@@ -205,7 +205,7 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
           </div>
           <Button
             size="small"
-            appearance="transparent"
+            appearance="outline"
             icon={item.favorite ? <StarFilled /> : <StarRegular />}
             aria-label={item.favorite ? "Remove from favorites" : "Add to favorites"}
             aria-pressed={item.favorite}
@@ -218,7 +218,7 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
           />
           <Menu>
             <MenuTrigger disableButtonEnhancement>
-              <Button size="small" appearance="transparent" icon={<MoreHorizontalRegular />} aria-label={`More for ${item.name}`} />
+              <Button size="small" appearance="outline" icon={<MoreHorizontalRegular />} aria-label={`More for ${item.name}`} />
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
@@ -351,7 +351,7 @@ export function Shapes() {
         <ShapeTest />
       ) : (
         <Section>
-          <Button appearance="subtle" size="small" style={{ alignSelf: "flex-start" }} onClick={() => setChecking(true)}>
+          <Button size="small" style={{ alignSelf: "flex-start" }} onClick={() => setChecking(true)}>
             Check what Retro can copy from a shape…
           </Button>
         </Section>
