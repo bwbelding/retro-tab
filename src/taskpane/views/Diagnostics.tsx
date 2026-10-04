@@ -141,6 +141,9 @@ function BackupSection() {
       <Text size={200} className={styles.muted}>
         Your shape library and settings live in PowerPoint's add-in storage on this Mac. Clearing Office's cache would erase them, so keep a backup file.
       </Text>
+      <Text size={200} className={styles.muted}>
+        Only restore backup files you made yourself. A backup's shapes go into your slides when you insert them, so a file from someone else could put content you haven't seen into your decks.
+      </Text>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Button icon={<ArrowDownloadRegular />} onClick={() => void backup()}>
           Back up

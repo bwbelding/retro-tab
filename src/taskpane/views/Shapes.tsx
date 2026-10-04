@@ -17,7 +17,7 @@ import {
 import { AddRegular, MoreHorizontalRegular, SearchRegular, ShapesRegular, StarFilled, StarRegular } from "@fluentui/react-icons";
 import { activity, describeError } from "../../lib/activity";
 import { categoriesOf, filterItems, type Filter, type LibraryItem } from "../../lib/library";
-import { cleanupHelperSlides, insertItem, library, saveSelection } from "../../lib/libraryActions";
+import { cleanupHelperSlides, insertItem, library, saveSelection, stripOldItems } from "../../lib/libraryActions";
 import { UserError } from "../../lib/ppt";
 import { pane } from "../store";
 import { Section, useUi } from "../ui";
@@ -259,6 +259,7 @@ export function Shapes() {
     // Load the library, tidy leftover helper slides, and keep tidying as the selection changes
     // (cutting the shapes off a helper slide is a selection change).
     reload();
+    void stripOldItems().catch(() => undefined);
     if (typeof PowerPoint === "undefined") return;
     const tidy = () => void cleanupHelperSlides().catch(() => undefined);
     tidy();

@@ -79,8 +79,8 @@ Built-in control IDs come from Microsoft's published list (OfficeDev/office-cont
 - **Save selection to library** with a name and category. Retro captures the shapes, makes a preview with PowerPoint's own rendering, and decides the route (one click or helper slide), giving the reasons.
 - **Insert** by clicking an item: it lands **where it was saved** (moved onto the slide if it would fall off). Helper-slide items appear on a new slide, selected; after ⌘X Retro deletes the empty helper slide and returns to your slide for ⌘V.
 - Search, category filters, favorites, rename/move/delete. The list is **most recently used first**, which is what the ribbon's **Recent** opens (ribbon menus are fixed at install, so they can't list shapes by name).
-- **Storage:** every item keeps the slide it was exported from, stored part by part by content, so a template's masters and pictures (3.8 MB on your deck) are stored once however many shapes come from it.
-- **Backup / Restore** (More → Backup): one .json file with the library and settings. Restore adds items that aren't already there.
+- **Storage:** every item keeps the slide it was exported from, stripped down to the saved shapes: the slide's other shapes, speaker notes, comments, animations, pictures and charts only they used, and the deck's properties (title, authors) and thumbnail are removed before saving. What's left (the saved shapes plus the layout, master and theme they need) is stored part by part by content, so a template's masters and pictures (3.8 MB on your deck) are stored once however many shapes come from it. Items saved before 1.8.2, or restored from a backup, are stripped the next time the Shapes pane opens.
+- **Backup / Restore** (More → Backup): one .json file with the library and settings. Restore adds items that aren't already there. Only restore backups you made yourself (the pane says so).
 - **Check a shape** (bottom of the Shapes pane): the 3a test tool, which rebuilds the selection beside the originals and lists any differences.
 
 **What the 3a test showed on your Mac (16.113):** export ~100 ms, finding shapes and previews work, rebuilt lines and shapes compare identical, and the helper slide is an exact copy. Text with its own spacing or indents (often carried over from other decks) uses the helper slide.
@@ -121,6 +121,11 @@ Match width, height or size (to the first or last shape selected), swap position
 
 ### Deck quality check
 Scans every slide and flags: fonts outside the brand kit, fill or text colors outside the palette, objects partly off the slide, empty placeholders, and missing alt text (API 1.10). Each result has a **Go to** button that selects the problem shape. Rules are pure functions over a snapshot of the deck.
+
+### Security
+- No network calls except Retro's own `version.json` (the Diagnostics hosting check). Photos, shapes and settings stay in the pane's storage on the Mac.
+- The task pane has a Content Security Policy: code runs only from Retro's site and Office.js (appsforoffice.microsoft.com), pictures only from Retro's site or the pane itself (data: and blob: previews), and network requests only to Retro's site and Microsoft's Office hosts.
+- Restored backups can't point previews at web addresses (only embedded data: images are kept).
 
 ### Diagnostics (ships first)
 Shows PowerPoint version and platform, a table of supported API versions, whether IndexedDB storage works, and whether the hosting site is reachable. A **Copy report** button helps if you need to send it to IT.

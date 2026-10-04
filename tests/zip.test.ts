@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { base64ToBytes, bytesToBase64, openZip, writeZip } from "../src/lib/zip";
+import { base64ToBytes, bytesToBase64, crc32, openZip, storedEntry, writeZip } from "../src/lib/zip";
 import { makeZip } from "./helpers/makeZip";
 
 describe("zip reader", () => {
@@ -31,5 +31,18 @@ describe("zip writer", () => {
     expect(await copy.text("a.xml")).toBe("<a>hello</a>");
     expect(Array.from((await copy.bytes("b.bin"))!)).toEqual([9, 8, 7]);
     expect(copy.raw("a.xml")).toMatchObject({ method: 8, size: 12 });
+  });
+});
+
+describe("new entries", () => {
+  it("computes zip CRC-32", () => {
+    expect(crc32(new TextEncoder().encode("123456789"))).toBe(0xcbf43926);
+    expect(crc32(new Uint8Array())).toBe(0);
+  });
+
+  it("writes uncompressed entries that read back", async () => {
+    const zip = openZip(writeZip([storedEntry("a.txt", new TextEncoder().encode("hello"))]));
+    expect(await zip.text("a.txt")).toBe("hello");
+    expect(zip.raw("a.txt")).toMatchObject({ method: 0, crc: 0x3610a686, size: 5 });
   });
 });
