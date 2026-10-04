@@ -7,6 +7,7 @@ import { selectedShapes, UserError } from "../../lib/ppt";
 import { pane } from "../store";
 import { useSmartSelection } from "../useSmartSelection";
 import { SmartEditor, SmartInsert } from "./SmartSection";
+import { TrackerSection } from "./TrackerSection";
 import { Section, Seg, useUi } from "../ui";
 
 const useStyles = makeStyles({
@@ -152,11 +153,7 @@ export function Tools() {
 
       <SmartInsert hasSelection={Boolean(smart.selected)} refresh={smart.refresh} />
 
-      <Section title="Section tracker">
-        <Text size={200} className={ui.muted}>
-          Arrives in Phase 6.
-        </Text>
-      </Section>
+      <TrackerSection />
     </>
   );
 }

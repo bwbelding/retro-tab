@@ -18,8 +18,6 @@ export interface ViewInfo {
   nav: string;
   title: string;
   icon: FluentIcon;
-  /** What's coming, shown until the view is built. */
-  coming?: string;
 }
 
 export const VIEWS: ViewInfo[] = [
@@ -28,7 +26,7 @@ export const VIEWS: ViewInfo[] = [
   { key: "layout", nav: "Layout", title: "Size & position", icon: ResizeRegular },
   { key: "brand", nav: "Brand", title: "Brand kit", icon: ColorRegular },
   { key: "tools", nav: "Tools", title: "Slide tools", icon: NoteRegular },
-  { key: "check", nav: "Check", title: "Deck check", icon: ShieldCheckmarkRegular, coming: "Find off-brand fonts and colors, objects off the slide and empty placeholders. Arrives in Phase 6." },
+  { key: "check", nav: "Check", title: "Deck check", icon: ShieldCheckmarkRegular },
   { key: "diagnostics", nav: "More", title: "Diagnostics", icon: MoreHorizontalRegular },
 ];
 

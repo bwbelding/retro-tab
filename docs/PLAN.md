@@ -117,10 +117,21 @@ Match width, height or size (to the first or last shape selected), swap position
 
 ### Slide utilities
 - **Sticky Note and DRAFT stamp:** shapes tagged with `retro:sticky` using the tags API, so **Remove All** can strip them before you send a deck out.
-- **Tracker/agenda builder:** you assign slides to sections (stored in tags). It generates an agenda slide and a section tracker bar on each slide, highlighting the current section. *Refresh* rebuilds them.
+- **Section tracker** (Tools pane, Polish → Review → Tracker):
+  - **Sections are defined in Retro.** You select the first slide of a section and click *Add section*, and Retro tags that slide with the section name. A section runs until the next one starts, so moving or adding slides keeps sections right. Rename, remove, or click a section to go to it.
+  - **Apply tracker** puts a tracker on every slide in a section, highlighting the current section. Slides before the first section (the title slide) get none. Style: Tabs, Bar or Dots; position: Top or Bottom. It uses the brand kit's first color and body font, and each slide's tracker is one group.
+  - **Agenda slide:** optional, added once before the first section using the template's "Title Only" layout. Applying again updates its list rather than adding another.
+  - **Refresh tracker** on the ribbon rebuilds everything with the deck's saved settings. **Remove tracker** deletes the trackers but leaves the agenda slide, since it may have your edits.
 
 ### Deck quality check
-Scans every slide and flags: fonts outside the brand kit, fill or text colors outside the palette, objects partly off the slide, empty placeholders, and missing alt text (API 1.10). Each result has a **Go to** button that selects the problem shape. Rules are pure functions over a snapshot of the deck.
+The Check pane runs as soon as it opens (or on **Run again**) and lists issues by slide, with filters per rule and a **Go to** button that selects the shape (a shape inside a group selects the group). The rules:
+- **Fonts** that aren't the kit's heading or body font. Text with mixed fonts is split until each piece has one. Theme font references aren't flagged.
+- **Colors:** fill and text colors that aren't in the kit, with the closest kit color. White and black are always fine.
+- **Off-slide:** objects running past an edge, giving the distance, or entirely off the slide.
+- **Empty placeholders:** title, text, content and picture placeholders.
+- **Alt text:** missing on pictures, unless they're marked decorative.
+
+Empty placeholders and alt text need API 1.10. Rules can be switched off under **Rules**, and Retro's own notes, stamps and tracker are never flagged. The rules are pure functions over a snapshot of the deck.
 
 ### Security
 - No network calls except Retro's own `version.json` (the Diagnostics hosting check). Photos, shapes and settings stay in the pane's storage on the Mac.
@@ -143,7 +154,7 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
    - **3b:** the library (save, preview, search, categories, favorites, insert, Recent) plus Backup/Restore.
 4. **Photos.**
 5. **Brand kit.**
-6. **Section tracker + Deck check.**
+6. **Section tracker + Deck check.** Sections are marked in Retro, and the tracker goes on every slide in a section. Deck Check treats white and black as on-brand.
 
 Each phase is its own PR with a short manual test checklist for your Mac.
 

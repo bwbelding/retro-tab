@@ -179,7 +179,10 @@ export const ADDINS = [
             label: "Tracker",
             tip: "Section tracker and agenda slide.",
             icon: "tracker",
-            menu: [{ id: "TrackerOpen", label: "Set up tracker…", tip: "Define sections and apply the tracker.", icon: "tracker", view: "tools" }],
+            menu: [
+              { id: "TrackerOpen", label: "Set up tracker…", tip: "Define sections and apply the tracker.", icon: "tracker", view: "tools" },
+              { id: "TrackerRefresh", label: "Refresh tracker", tip: "Rebuild the tracker and agenda after adding, moving or removing slides.", icon: "tracker", run: "refreshTracker" },
+            ],
           },
         ],
       },
