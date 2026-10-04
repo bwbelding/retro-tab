@@ -139,6 +139,28 @@ describe("shape library storage", () => {
   });
 });
 
+describe("slide library items", () => {
+  it("keeps several slides in one item, backs them up, and frees their parts when deleted", async () => {
+    const store = memoryStore();
+    const lib = createLibrary(store);
+    const slides = [await pptxBytes(), await pptxBytes(["s", "2", "3", "4", "5", "6", "7", "8"]), await pptxBytes(["t", "2", "3", "4", "5", "6", "7", "8"])];
+    const item = await lib.save({ name: "", category: "Company", recipe, pptx: slides[0], more: slides.slice(1), issues: [], kind: "slides" });
+    expect(item).toMatchObject({ name: "Slide", kind: "slides", slides: 3, route: "click" });
+    const back = await lib.slides(item.id);
+    expect(back).toHaveLength(3);
+    for (const [i, file] of back.entries()) expect(await openZip(file).text("ppt/tags/tag1.xml")).toBe(await openZip(slides[i]).text("ppt/tags/tag1.xml"));
+
+    const copy = createLibrary(memoryStore());
+    await copy.restore(JSON.parse(JSON.stringify(await lib.backup())));
+    const restored = (await copy.list())[0];
+    expect(restored).toMatchObject({ kind: "slides", slides: 3 });
+    expect(await copy.slides(restored.id)).toHaveLength(3);
+
+    await lib.remove(item.id);
+    expect(parts(store)).toBe(0);
+  });
+});
+
 describe("finding and placing items", () => {
   const item = (name: string, category: string, favorite: boolean, created: string, used?: string): LibraryItem => ({
     id: name,

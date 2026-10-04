@@ -13,9 +13,15 @@ export interface PaneMessage {
 interface PaneState {
   view: ViewKey;
   message?: PaneMessage;
+  /** Which library the Shapes view shows. */
+  library: "shapes" | "slides";
+  /** The ribbon asked for the library's save form; cleared when that form closes. */
+  saveRequested?: boolean;
+  /** What the Check view shows. */
+  checkMode: "check" | "find";
 }
 
-let state: PaneState = { view: "diagnostics" };
+let state: PaneState = { view: "diagnostics", library: "shapes", checkMode: "check" };
 const listeners = new Set<() => void>();
 
 function set(next: Partial<PaneState>) {
@@ -25,7 +31,13 @@ function set(next: Partial<PaneState>) {
 
 export const pane = {
   init(view: ViewKey) {
-    state = { view };
+    state = { view, library: "shapes", checkMode: "check" };
+  },
+  setCheckMode(checkMode: PaneState["checkMode"]) {
+    set({ checkMode });
+  },
+  setLibrary(library: PaneState["library"], saveRequested = false) {
+    set({ library, saveRequested });
   },
   setView(view: ViewKey) {
     set({ view, message: undefined });

@@ -47,7 +47,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organized by 
 
 **Retro Build: make, note and arrange content**
 1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
-2. **Shapes:** My Library (R) · Save to Library (R) · Recent ▾ (R) · Smart ▾ (R) · Shapes gallery (B)
+2. **Shapes:** My Library (R) · Save to Library (R) · Recent ▾ (R) · Smart ▾ (R) · Slides ▾ (R) · Shapes gallery (B)
 3. **Insert:** Photos (R) · Text Box (B) · Table (B) · Picture (B)
 4. **Text:** Font Size Up/Down, Bold, Bullets, Line Spacing, Font Color (all B, icon-only)
 5. **Arrange:** Align & Distribute ▾, Group ▾, Rotate ▾, Selection Pane, Bring to Front, Send to Back (all B)
@@ -56,7 +56,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organized by 
 **Retro Polish: style and review it**
 1. **Format:** Format Painter, Shape Fill, Shape Outline, Crop (all B)
 2. **Brand:** Brand Kit · Apply Fonts · Fill 1 / 2 / 3 (all R)
-3. **Review:** Deck Check · Tracker ▾ (R)
+3. **Review:** Deck Check · Find & Update · Tracker ▾ (R)
 4. **Retro:** Diagnostics · Backup ▾ (R)
 
 Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids), checked on PowerPoint for Mac 16.113. "Text Box Options" isn't on that list, so **Font Color** takes its slot. Mac differences found in testing: Font Size Down needs the standard ID `FontSizeDecrease` (the list's `FontSizeDecrese` shows nothing); Picture works as `PictureInsertFromFilePowerPoint`; no ID for **Icons** shows on Mac, so Icons stays on PowerPoint's own Insert tab. Built-in buttons that act on a selection are grayed until something is selected, as on the Home tab.
@@ -123,15 +123,39 @@ Match width, height or size (to the first or last shape selected), swap position
   - **Agenda slide:** optional, added once before the first section using the template's "Title Only" layout. Applying again updates its list rather than adding another.
   - **Refresh tracker** on the ribbon rebuilds everything with the deck's saved settings. **Remove tracker** deletes the trackers but leaves the agenda slide, since it may have your edits.
 
+### Slide library
+- **Slides ▾** on the ribbon (or the Shapes pane's **Slides** switch) holds whole slides you reuse: company overview, team, architecture, standard closings.
+- **Save selected slides:** one item can hold several slides, in deck order. It keeps everything on the slides and their speaker notes. Comments, the deck's properties and thumbnail, comment authors and printer settings are removed.
+- **Insert:** click a saved slide to insert it after the current slide, in the open deck's theme. Retro's section marks and tracker don't come along; refresh the tracker to add it.
+- Saved slides share the shape library's storage (template parts stored once), search, categories, favorites and backups.
+
 ### Deck quality check
-The Check pane runs as soon as it opens (or on **Run again**) and lists issues by slide, with filters per rule and a **Go to** button that selects the shape (a shape inside a group selects the group). The rules:
+The Check pane runs as soon as it opens (or on **Run again**) and lists issues by slide, with filters per rule and a **Go to** button that selects the shape (a shape inside a group selects the group). When nothing is found it says **Ready to send**. The rules:
+- **Unfinished text:** XX, TBD, TBC, TODO, ??, [insert …] and lorem ipsum.
+- **Notes & stamps:** Retro sticky notes and stamps still on slides.
 - **Fonts** that aren't the kit's heading or body font. Text with mixed fonts is split until each piece has one. Theme font references aren't flagged.
 - **Colors:** fill and text colors that aren't in the kit, with the closest kit color. White and black are always fine.
+- **Small text:** under 12 pt.
 - **Off-slide:** objects running past an edge, giving the distance, or entirely off the slide.
 - **Empty placeholders:** title, text, content and picture placeholders.
+- **Titles:** slides without a title, and titles used on more than one slide.
 - **Alt text:** missing on pictures, unless they're marked decorative.
 
-Empty placeholders and alt text need API 1.10. Rules can be switched off under **Rules**, and Retro's own notes, stamps and tracker are never flagged. The rules are pure functions over a snapshot of the deck.
+**Fixes:** a button on each fixable issue, and **Fix all** for everything shown that can be fixed without your input.
+- A font change touches only the off-brand characters: titles get the heading font, other text the body font.
+- Off-palette colors change to the closest kit color.
+- Off-slide objects move back onto the slide, if they fit.
+- Empty placeholders and leftover notes and stamps are deleted.
+- Alt text is typed right in the result.
+- Unfinished text, small text and titles need your judgment, so they have no fix.
+
+Empty placeholders and alt text need API 1.10. Rules can be switched off under **Rules**, and new rules start switched on. Retro's tracker is never flagged. The rules are pure functions over a snapshot of the deck.
+
+### Find & update
+Check pane → **Find & update** (or **Find & Update** on the ribbon).
+- **Find** a number or phrase in every slide's text, including grouped shapes and table cells, but not Retro's tracker. Matches are shown in context, grouped by slide, each with a checkbox and Go to.
+- **Whole words and numbers** (on by default): "4.2" matches "$4.2M" but not "14.2%" or "4.25".
+- **Replace** changes the ticked matches and keeps the text's formatting. Table cells are rewritten whole. Each text is read again first, and left alone if it changed since the search.
 
 ### Security
 - No network calls except Retro's own `version.json` (the Diagnostics hosting check). Photos, shapes and settings stay in the pane's storage on the Mac.
@@ -155,6 +179,8 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
 4. **Photos.**
 5. **Brand kit.**
 6. **Section tracker + Deck check.** Sections are marked in Retro, and the tracker goes on every slide in a section. Deck Check treats white and black as on-brand.
+7. **Slide library, Deck Check fixes, pre-send rules, Find & update.** Inserted slides match the open deck's theme, saved slides keep their speaker notes, and text under 12 pt counts as small.
+8. **Next, from the feature audit:** storyline view (titles at a glance), roadmap builder, KPI and scorecard builder, logo grid, title-position check, appendix mover.
 
 Each phase is its own PR with a short manual test checklist for your Mac.
 

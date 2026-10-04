@@ -50,12 +50,12 @@ const smart = (kind: SmartKind): Action => ({
 });
 
 export const ACTIONS: Record<ActionName, Action> = {
-  showShapes: show("shapes"),
+  showShapes: { view: "shapes", run: () => (pane.setLibrary("shapes"), pane.open("shapes")) },
   showPhotos: show("photos"),
   showLayout: show("layout"),
   showBrand: show("brand"),
   showTools: show("tools"),
-  showCheck: show("check"),
+  showCheck: { view: "check", run: () => (pane.setCheckMode("check"), pane.open("check")) },
   showDiagnostics: show("diagnostics"),
   addSticky: {
     view: "tools",
@@ -108,6 +108,9 @@ export const ACTIONS: Record<ActionName, Action> = {
   applyFill2: { view: "brand", run: () => applyFill(2) },
   applyFill3: { view: "brand", run: () => applyFill(3) },
   refreshTracker: { view: "tools", run: async () => void (await refreshTracker()) },
+  openSlideLibrary: { view: "shapes", run: () => (pane.setLibrary("slides"), pane.open("shapes")) },
+  saveSlides: { view: "shapes", run: () => (pane.setLibrary("slides", true), pane.open("shapes")) },
+  openFind: { view: "check", run: () => (pane.setCheckMode("find"), pane.open("check")) },
   renumberCircles: {
     view: "tools",
     run: async () => {

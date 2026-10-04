@@ -82,6 +82,16 @@ export const ADDINS = [
               { id: "SmartEdit", label: "Edit selected…", tip: "Change the selected element's value in the pane.", icon: "smart", view: "tools" },
             ],
           },
+          {
+            id: "Slides",
+            label: "Slides",
+            tip: "Your slide library: save slides you reuse and insert them into any deck.",
+            icon: "slides",
+            menu: [
+              { id: "SlideLibrary", label: "Slide library…", tip: "Browse and insert your saved slides.", icon: "slides", run: "openSlideLibrary" },
+              { id: "SaveSlides", label: "Save selected slides…", tip: "Save the selected slides to your slide library.", icon: "slides", run: "saveSlides" },
+            ],
+          },
           { office: "ShapesInsertGallery" },
         ],
       },
@@ -173,7 +183,8 @@ export const ADDINS = [
         label: "Review",
         icon: "deckCheck",
         controls: [
-          { id: "DeckCheck", label: "Deck Check", tip: "Find off-brand fonts and colors, off-slide objects and empty placeholders.", icon: "deckCheck", view: "check" },
+          { id: "DeckCheck", label: "Deck Check", tip: "Check before you send: unfinished text, leftover notes, off-brand fonts and colors, small text, off-slide objects, titles and more, with one-click fixes.", icon: "deckCheck", view: "check" },
+          { id: "FindUpdate", label: "Find & Update", tip: "Find a number or phrase on every slide, including tables and groups, and update the ones you choose.", icon: "findUpdate", run: "openFind" },
           {
             id: "Tracker",
             label: "Tracker",
