@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, ProgressBar, Text, ToggleButton, makeStyles, tokens } from "@fluentui/react-components";
-import { ArrowSyncRegular, FolderOpenRegular, ImageRegular, PlugConnectedRegular, SearchRegular } from "@fluentui/react-icons";
+import { Button, Input, ProgressBar, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { ArrowSyncRegular, ChevronRightRegular, FolderOpenRegular, FolderRegular, ImageRegular, PlugConnectedRegular, SearchRegular } from "@fluentui/react-icons";
 import { activity, describeError } from "../../lib/activity";
 import { isConnected, insertPhoto, photoStore, scanFolder, type ScanProgress } from "../../lib/photoActions";
-import { filterPhotos, topFolders, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "../../lib/photos";
+import { childFolders, filterPhotos, type Anchor, type Kind, type PhotoEntry, type PhotoIndex, type Placement } from "../../lib/photos";
 import { UserError } from "../../lib/ppt";
 import { prefs } from "../../lib/prefs";
 import { pane } from "../store";
@@ -26,7 +26,34 @@ const useStyles = makeStyles({
     ":focus-visible": { outline: `2px solid ${tokens.colorStrokeFocus2}` },
   },
   img: { width: "100%", height: "100%", objectFit: "cover" },
-  chips: { display: "flex", gap: "4px", flexWrap: "wrap" },
+  // Graphics are shown whole on a light checkerboard, since many are icons on transparent backgrounds.
+  vector: {
+    objectFit: "contain",
+    padding: "6px",
+    boxSizing: "border-box",
+    backgroundColor: "#f3f3f3",
+    backgroundImage: "linear-gradient(45deg, #e2e2e2 25%, transparent 25%, transparent 75%, #e2e2e2 75%), linear-gradient(45deg, #e2e2e2 25%, transparent 25%, transparent 75%, #e2e2e2 75%)",
+    backgroundSize: "10px 10px",
+    backgroundPosition: "0 0, 5px 5px",
+  },
+  crumbs: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px", fontSize: tokens.fontSizeBase200 },
+  folders: { display: "flex", flexDirection: "column", maxHeight: "180px", overflowY: "auto", border: `1px solid ${tokens.colorNeutralStroke2}`, borderRadius: tokens.borderRadiusMedium },
+  folder: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "5px 8px",
+    border: "none",
+    borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
+    background: "none",
+    color: tokens.colorNeutralForeground1,
+    textAlign: "left",
+    cursor: "pointer",
+    fontSize: tokens.fontSizeBase200,
+    ":hover": { backgroundColor: tokens.colorNeutralBackground1Hover },
+    ":focus-visible": { outline: `2px solid ${tokens.colorStrokeFocus2}`, outlineOffset: "-2px" },
+  },
+  folderName: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   hidden: { display: "none" },
 });
 
@@ -43,6 +70,12 @@ const ANCHORS: { value: Anchor; label: string }[] = [
   { value: "bottom", label: "Bottom" },
 ];
 
+const KINDS: { value: Kind; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "photos", label: "Photos" },
+  { value: "graphics", label: "Graphics" },
+];
+
 const PAGE = 60;
 
 function Thumb({ photo, onPick }: { photo: PhotoEntry; onPick: (p: PhotoEntry) => void }) {
@@ -55,7 +88,7 @@ function Thumb({ photo, onPick }: { photo: PhotoEntry; onPick: (p: PhotoEntry) =
       .thumb(photo.id)
       .then((data) => {
         if (!data || !live) return;
-        made = URL.createObjectURL(new Blob([data], { type: "image/jpeg" }));
+        made = URL.createObjectURL(new Blob([data], { type: photo.vector ? "image/svg+xml" : "image/jpeg" }));
         setUrl(made);
       })
       .catch(() => undefined);
@@ -63,10 +96,10 @@ function Thumb({ photo, onPick }: { photo: PhotoEntry; onPick: (p: PhotoEntry) =
       live = false;
       if (made) URL.revokeObjectURL(made);
     };
-  }, [photo.id]);
+  }, [photo.id, photo.vector]);
   return (
     <button className={s.thumb} onClick={() => onPick(photo)} title={photo.id} aria-label={`Insert ${photo.name}`}>
-      {url ? <img className={s.img} src={url} alt="" /> : <ImageRegular fontSize={20} />}
+      {url ? <img className={photo.vector ? `${s.img} ${s.vector}` : s.img} src={url} alt="" /> : <ImageRegular fontSize={20} />}
     </button>
   );
 }
@@ -82,6 +115,7 @@ export function Photos() {
   const [anchor, setAnchor] = useState<Anchor>("center");
   const [query, setQuery] = useState("");
   const [folder, setFolder] = useState("");
+  const [kind, setKind] = useState<Kind>("all");
   const [limit, setLimit] = useState(PAGE);
   const [busy, setBusy] = useState(false);
 
@@ -112,13 +146,14 @@ export function Photos() {
       setIndex(r.index);
       setConnected(true);
       setFolder("");
-      const parts = [`${r.index.photos.length} photos in “${r.index.root}”`];
+      const graphics = r.index.photos.filter((p) => p.vector).length;
+      const parts = [`${r.index.photos.length - graphics} photos${graphics ? ` and ${graphics} graphics` : ""} in “${r.index.root}”`];
       if (r.added) parts.push(`${r.added} new`);
       if (r.removed) parts.push(`${r.removed} removed`);
       if (r.unreadable) parts.push(`${r.unreadable} couldn't be read (formats PowerPoint can't open, or cloud files not downloaded to this Mac)`);
       const st = r.stats;
       parts.push(`Finder gave Retro ${st.files} files in ${st.folders} folder${st.folders === 1 ? "" : "s"}, ${st.depth} level${st.depth === 1 ? "" : "s"} of subfolders deep`);
-      if (st.skipped.length) parts.push(`not photos: ${st.skipped.slice(0, 6).map((x) => `${x.count} ${x.ext}`).join(", ")}${st.skipped.length > 6 ? ", …" : ""}`);
+      if (st.skipped.length) parts.push(`skipped: ${st.skipped.slice(0, 6).map((x) => `${x.count} ${x.ext}`).join(", ")}${st.skipped.length > 6 ? ", …" : ""}`);
       pane.showMessage({ intent: r.unreadable ? "warning" : "success", text: `${parts.join(" · ")}.` });
     } catch (e) {
       pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof UserError ? e.message : describeError(e) });
@@ -141,8 +176,15 @@ export function Photos() {
     }
   };
 
-  const folders = useMemo(() => topFolders(index?.photos ?? []), [index]);
-  const shown = useMemo(() => filterPhotos(index?.photos ?? [], query, folder), [index, query, folder]);
+  const folders = useMemo(() => childFolders(index?.photos ?? [], folder), [index, folder]);
+  const shown = useMemo(() => filterPhotos(index?.photos ?? [], query, folder, kind), [index, query, folder, kind]);
+  const graphicsCount = useMemo(() => (index?.photos ?? []).filter((p) => p.vector).length, [index]);
+  const hasGraphics = graphicsCount > 0;
+  const openFolder = (path: string) => {
+    setFolder(path);
+    setLimit(PAGE);
+  };
+  const crumbs = folder ? folder.split("/") : [];
   const help = PLACEMENTS.find((p) => p.value === placement)!.help;
 
   return (
@@ -176,7 +218,7 @@ export function Photos() {
         ) : (
           <>
             <Text size={200}>
-              <b>{index.root}</b> · {index.photos.length} photos
+              <b>{index.root}</b> · {index.photos.length - graphicsCount} photos{graphicsCount ? ` · ${graphicsCount} graphics` : ""}
             </Text>
             {!connected && (
               <Text size={200} className={ui.muted}>
@@ -217,27 +259,51 @@ export function Photos() {
             <Text size={200} className={ui.muted}>
               {help}
               {placement !== "asis" && " Tall photos are trimmed from the top, center or bottom as chosen."}
+              {hasGraphics && " Graphics (SVG) always go in whole: inside the selected shape, or centered on the slide."}
             </Text>
           </Section>
 
           <Section>
             <Input contentBefore={<SearchRegular />} placeholder="Search file names" value={query} onChange={(_, d) => setQuery(d.value)} aria-label="Search photos" />
+            {hasGraphics && (
+              <Seg
+                label="Show"
+                value={kind}
+                options={KINDS}
+                onChange={(k) => {
+                  setKind(k);
+                  setLimit(PAGE);
+                }}
+              />
+            )}
+            <nav className={s.crumbs} aria-label="Folder">
+              {[index.root, ...crumbs].map((name, i) => {
+                const path = crumbs.slice(0, i).join("/");
+                const here = i === crumbs.length;
+                return (
+                  <span key={i} style={{ display: "contents" }}>
+                    {i > 0 && <ChevronRightRegular fontSize={12} aria-hidden />}
+                    {here ? (
+                      <Text size={200} weight="semibold" style={{ padding: "0 6px" }} aria-current="location">
+                        {name}
+                      </Text>
+                    ) : (
+                      <Button size="small" appearance="transparent" onClick={() => openFolder(path)}>
+                        {name}
+                      </Button>
+                    )}
+                  </span>
+                );
+              })}
+            </nav>
             {folders.length > 0 && (
-              <div className={s.chips} role="radiogroup" aria-label="Folder">
-                {["", ...folders].map((f) => (
-                  <ToggleButton
-                    key={f || "all"}
-                    size="small"
-                    role="radio"
-                    aria-checked={f === folder}
-                    checked={f === folder}
-                    onClick={() => {
-                      setFolder(f);
-                      setLimit(PAGE);
-                    }}
-                  >
-                    {f || "All"}
-                  </ToggleButton>
+              <div className={s.folders}>
+                {folders.map((f) => (
+                  <button key={f.path} className={s.folder} onClick={() => openFolder(f.path)}>
+                    <FolderRegular fontSize={16} aria-hidden />
+                    <span className={s.folderName}>{f.name}</span>
+                    <span className={ui.muted}>{f.count}</span>
+                  </button>
                 ))}
               </div>
             )}
@@ -253,7 +319,8 @@ export function Photos() {
                   ))}
                 </div>
                 <Text size={200} className={ui.muted}>
-                  Showing {Math.min(limit, shown.length)} of {shown.length}. Click a photo to place it.
+                  Showing {Math.min(limit, shown.length)} of {shown.length}
+                  {folders.length > 0 ? " (including subfolders)" : ""}. Click one to place it.
                 </Text>
                 {shown.length > limit && (
                   <Button size="small" style={{ alignSelf: "flex-start" }} onClick={() => setLimit((n) => n + PAGE)}>
