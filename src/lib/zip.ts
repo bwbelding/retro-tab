@@ -149,3 +149,25 @@ export function writeZip(entries: RawEntry[]): Uint8Array {
   view.setUint32(p + 16, central, true);
   return out;
 }
+
+let crcTable: Uint32Array | undefined;
+
+/** CRC-32 as zip files use it. */
+export function crc32(bytes: Uint8Array): number {
+  if (!crcTable) {
+    crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let crc = 0xffffffff;
+  for (const b of bytes) crc = crcTable[(crc ^ b) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** A new, uncompressed zip entry. */
+export function storedEntry(name: string, data: Uint8Array): RawEntry {
+  return { name, method: 0, crc: crc32(data), size: data.length, data };
+}

@@ -5,6 +5,7 @@ import { kv } from "./idb";
 import { createLibrary, placement, type LibraryItem } from "./library";
 import { currentSlide, slideSize, UserError } from "./ppt";
 import { captureShapes, HELPER_TAG, insertHelperSlide, rebuildIssues, rebuildShapes, type Recipe } from "./shapeCapture";
+import { stripToCaptured } from "./slideStrip";
 import { base64ToBytes, bytesToBase64 } from "./zip";
 
 export const library = createLibrary(kv);
@@ -71,7 +72,30 @@ export async function saveSelection(name: string, category: string): Promise<Lib
   });
   const { recipe, pptx } = captured.capture;
   const issues = [...new Set(recipe.nodes.flatMap(rebuildIssues))];
-  return library.save({ name, category, recipe, pptx: base64ToBytes(pptx), issues, preview: captured.preview });
+  // Keep only the saved shapes, not the rest of the slide (other shapes, notes, the deck's properties).
+  const stripped = await stripToCaptured(base64ToBytes(pptx));
+  return library.save({ name, category, recipe, pptx: stripped, issues, preview: captured.preview });
+}
+
+let stripping: Promise<void> | undefined;
+
+/**
+ * Strip the stored slides of items saved before Retro did that on save (or restored from a
+ * backup), so they keep only their saved shapes. An item that fails is left as it was and tried
+ * again next time.
+ */
+export function stripOldItems(): Promise<void> {
+  stripping ??= (async () => {
+    for (const item of await library.list()) {
+      if (item.stripped) continue;
+      try {
+        await library.replacePptx(item.id, await stripToCaptured(await library.pptx(item.id)));
+      } catch {
+        // Leave it; inserting still works.
+      }
+    }
+  })().finally(() => (stripping = undefined));
+  return stripping;
 }
 
 // Whether a helper slide might be in the deck. True at first, to tidy any left from last time.

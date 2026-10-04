@@ -31,6 +31,8 @@ export interface LibraryItem {
   box: Box;
   /** PNG data URL. */
   preview?: string;
+  /** Its stored slide holds only the saved shapes (see slideStrip.ts). Older items get stripped on load. */
+  stripped?: boolean;
 }
 
 interface StoredPart {
@@ -122,23 +124,49 @@ export function createLibrary(store: Store) {
   const list = async () => ((await store.get<LibraryItem[]>(INDEX)) ?? []).map(upgrade);
   const writeIndex = (items: LibraryItem[]) => store.set(INDEX, items);
 
+  // Changes run one at a time: they read and rewrite the index and the part counts, so two at once
+  // (stripping old items while you save one) could lose an update and delete a part still in use.
+  let queue: Promise<unknown> = Promise.resolve();
+  const exclusive = <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => (...args: A): Promise<R> => {
+    const run = queue.then(() => fn(...args));
+    queue = run.catch(() => undefined);
+    return run;
+  };
+
+  /** Store a .pptx's entries by content, counting references. */
+  async function storeParts(pptx: Uint8Array, refs: Record<string, number>): Promise<ItemData["parts"]> {
+    const zip = openZip(pptx);
+    const parts: ItemData["parts"] = [];
+    for (const name of zip.names) {
+      const raw = zip.raw(name)!;
+      const hash = await sha256((await zip.bytes(name))!);
+      if (!refs[hash] || !(await store.get(partKey(hash)))) {
+        const part: StoredPart = { method: raw.method, crc: raw.crc, size: raw.size, data: raw.data.slice() };
+        await store.set(partKey(hash), part);
+      }
+      refs[hash] = (refs[hash] ?? 0) + 1;
+      parts.push({ name, hash });
+    }
+    return parts;
+  }
+
+  /** Drop references to parts, deleting those nothing else uses. */
+  async function releaseParts(parts: ItemData["parts"], refs: Record<string, number>): Promise<void> {
+    for (const { hash } of parts) {
+      refs[hash] = (refs[hash] ?? 1) - 1;
+      if (refs[hash] <= 0) {
+        delete refs[hash];
+        await store.del(partKey(hash));
+      }
+    }
+  }
+
   return {
     list,
 
-    async save(item: NewItem): Promise<LibraryItem> {
-      const zip = openZip(item.pptx);
+    save: exclusive(async (item: NewItem): Promise<LibraryItem> => {
       const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
-      const parts: ItemData["parts"] = [];
-      for (const name of zip.names) {
-        const raw = zip.raw(name)!;
-        const hash = await sha256((await zip.bytes(name))!);
-        if (!refs[hash] || !(await store.get(partKey(hash)))) {
-          const part: StoredPart = { method: raw.method, crc: raw.crc, size: raw.size, data: raw.data.slice() };
-          await store.set(partKey(hash), part);
-        }
-        refs[hash] = (refs[hash] ?? 0) + 1;
-        parts.push({ name, hash });
-      }
+      const parts = await storeParts(item.pptx, refs);
       const saved: LibraryItem = {
         id: crypto.randomUUID(),
         name: item.name.trim() || "Shape",
@@ -150,36 +178,43 @@ export function createLibrary(store: Store) {
         issues: item.issues,
         box: item.recipe.box,
         preview: item.preview,
+        stripped: true,
       };
       await store.set(dataKey(saved.id), { recipe: item.recipe, parts } satisfies ItemData);
       await store.set(REFS, refs);
       await writeIndex([saved, ...(await list())]);
       return saved;
-    },
+    }),
 
-    async update(id: string, patch: Partial<Pick<LibraryItem, "name" | "category" | "favorite">>): Promise<void> {
+    update: exclusive(async (id: string, patch: Partial<Pick<LibraryItem, "name" | "category" | "favorite">>): Promise<void> => {
       await writeIndex((await list()).map((i) => (i.id === id ? { ...i, ...patch } : i)));
-    },
+    }),
 
-    async markUsed(id: string): Promise<void> {
+    markUsed: exclusive(async (id: string): Promise<void> => {
       const now = new Date().toISOString();
       await writeIndex((await list()).map((i) => (i.id === id ? { ...i, used: now, uses: i.uses + 1 } : i)));
-    },
+    }),
 
-    async remove(id: string): Promise<void> {
+    remove: exclusive(async (id: string): Promise<void> => {
       const data = await store.get<ItemData>(dataKey(id));
       const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
-      for (const { hash } of data?.parts ?? []) {
-        refs[hash] = (refs[hash] ?? 1) - 1;
-        if (refs[hash] <= 0) {
-          delete refs[hash];
-          await store.del(partKey(hash));
-        }
-      }
+      await releaseParts(data?.parts ?? [], refs);
       await store.set(REFS, refs);
       await store.del(dataKey(id));
       await writeIndex((await list()).filter((i) => i.id !== id));
-    },
+    }),
+
+    /** Swap an item's stored slide for a new one (used to strip older items), and mark it stripped. */
+    replacePptx: exclusive(async (id: string, pptx: Uint8Array): Promise<void> => {
+      const data = await store.get<ItemData>(dataKey(id));
+      if (!data) return;
+      const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
+      const parts = await storeParts(pptx, refs);
+      await releaseParts(data.parts, refs);
+      await store.set(REFS, refs);
+      await store.set(dataKey(id), { ...data, parts } satisfies ItemData);
+      await writeIndex((await list()).map((i) => (i.id === id ? { ...i, stripped: true } : i)));
+    }),
 
     async recipe(id: string): Promise<Recipe> {
       const data = await store.get<ItemData>(dataKey(id));
@@ -208,7 +243,7 @@ export function createLibrary(store: Store) {
     },
 
     /** Add a backup's items (skipping ones already here) and settings. Returns how many were added. */
-    async restore(backup: Backup): Promise<number> {
+    restore: exclusive(async (backup: Backup): Promise<number> => {
       if (backup?.retro !== "backup" || backup.version !== 1) throw new Error("That file isn't a Retro backup.");
       const items = await list();
       const have = new Set(items.map((i) => i.id));
@@ -224,14 +259,15 @@ export function createLibrary(store: Store) {
           refs[hash] = (refs[hash] ?? 0) + 1;
         }
         await store.set(dataKey(item.id), data);
-        // Previews must be embedded pictures, never addresses the pane would fetch.
-        added.push({ ...item, preview: item.preview?.startsWith("data:image/") ? item.preview : undefined });
+        // Previews must be embedded pictures (never addresses the pane would fetch), and restored slides are stripped again on load
+        // whatever the file says (it may come from an older version, or have been edited).
+        added.push({ ...item, preview: item.preview?.startsWith("data:image/") ? item.preview : undefined, stripped: undefined });
       }
       await store.set(REFS, refs);
       await writeIndex([...added, ...items]);
       for (const [key, value] of Object.entries(backup.settings ?? {})) if (SETTING_KEYS.includes(key)) await store.set(key, value);
       return added.length;
-    },
+    }),
 
     /** The exported slide the item was saved from, reassembled. */
     async pptx(id: string): Promise<Uint8Array> {

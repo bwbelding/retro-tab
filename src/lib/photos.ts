@@ -225,6 +225,13 @@ export function fitRect(w: number, h: number, area: { left: number; top: number;
   return { left: round(area.left + (area.width - width) / 2), top: round(area.top + (area.height - height) / 2), width: round(width), height: round(height) };
 }
 
+/** Whether a shape covers at least `fraction` of the slide (the part of it on the slide counts). */
+export function coversSlide(shape: { left: number; top: number; width: number; height: number }, slide: { width: number; height: number }, fraction = 0.9): boolean {
+  const w = Math.min(shape.left + shape.width, slide.width) - Math.max(shape.left, 0);
+  const h = Math.min(shape.top + shape.height, slide.height) - Math.max(shape.top, 0);
+  return w > 0 && h > 0 && w * h >= fraction * slide.width * slide.height;
+}
+
 /** Pictures keep a format that can hold transparency; everything else becomes JPEG. */
 export function outputType(name: string): "image/png" | "image/jpeg" {
   return /\.(png|gif|webp)$/i.test(name) ? "image/png" : "image/jpeg";

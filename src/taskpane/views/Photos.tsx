@@ -60,7 +60,7 @@ const useStyles = makeStyles({
 const PLACEMENTS: { value: Placement; label: string; help: string }[] = [
   { value: "full", label: "Full bleed", help: "Covers the whole slide, behind everything else, cropped to fit." },
   { value: "box", label: "Fill box", help: "Fills the selected shape (rectangle, circle, rounded box…), cropped to its shape." },
-  { value: "background", label: "Background", help: "Replaces this slide's background, cropped to fit, and hides the template's background graphics on this slide." },
+  { value: "background", label: "Background", help: "Replaces this slide's background, cropped to fit, hides the template's background graphics on this slide, and removes a full-slide picture covering it." },
   { value: "asis", label: "As is", help: "The whole photo, uncropped, centered on the slide." },
 ];
 

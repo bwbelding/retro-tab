@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asIsRect, childFolders, cropFor, filterPhotos, fitRect, folderOf, isPhoto, isVector, outputSize, outputType, planScan, scanStats, splitPath, svgSize, type PhotoEntry, type PickedFile } from "../src/lib/photos";
+import { asIsRect, childFolders, coversSlide, cropFor, filterPhotos, fitRect, folderOf, isPhoto, isVector, outputSize, outputType, planScan, scanStats, splitPath, svgSize, type PhotoEntry, type PickedFile } from "../src/lib/photos";
 
 const file = (path: string, size = 100, lastModified = 1): PickedFile => ({ name: path.split("/").pop()!, type: "", size, lastModified, webkitRelativePath: path });
 const entry = (id: string, size = 100, modified = 1): PhotoEntry => ({ id, name: id.split("/").pop()!, folder: folderOf(id), size, modified, width: 4000, height: 3000 });
@@ -119,6 +119,15 @@ describe("photo geometry", () => {
   it("fits a graphic inside part of an area, centered", () => {
     expect(fitRect(100, 100, { left: 0, top: 0, width: 960, height: 540 }, 0.4)).toEqual({ left: 372, top: 162, width: 216, height: 216 });
     expect(fitRect(200, 100, { left: 100, top: 100, width: 100, height: 100 }, 0.8)).toEqual({ left: 110, top: 130, width: 80, height: 40 });
+  });
+
+  it("finds pictures that cover the slide, counting only the part on the slide", () => {
+    const slide = { width: 960, height: 540 };
+    expect(coversSlide({ left: 0, top: 0, width: 960, height: 540 }, slide)).toBe(true);
+    expect(coversSlide({ left: -50, top: -20, width: 1060, height: 600 }, slide)).toBe(true); // bleeds off the edges
+    expect(coversSlide({ left: 0, top: 0, width: 960, height: 400 }, slide)).toBe(false); // a banner
+    expect(coversSlide({ left: 500, top: 0, width: 960, height: 540 }, slide)).toBe(false); // mostly off the slide
+    expect(coversSlide({ left: 2000, top: 0, width: 960, height: 540 }, slide)).toBe(false);
   });
 
   it("keeps formats that can be transparent", () => {

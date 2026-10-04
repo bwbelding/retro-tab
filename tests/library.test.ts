@@ -93,6 +93,50 @@ describe("shape library storage", () => {
     await third.restore(tampered);
     expect((await third.list()).every((i) => i.preview === undefined)).toBe(true);
   });
+
+  it("marks new saves stripped, and swaps an older item's slide without leaking parts", async () => {
+    const store = memoryStore();
+    const { lib, a } = await saveTwo(store);
+    expect(a.stripped).toBe(true);
+    // Restored items are stripped again, since a backup can come from an older version.
+    const target = memoryStore();
+    const restored = createLibrary(target);
+    await restored.restore(JSON.parse(JSON.stringify(await lib.backup())));
+    expect((await restored.list()).every((i) => i.stripped === undefined)).toBe(true);
+
+    const smaller = await pptxBytes(["a", "b", "c", "d", "e", "f", "g", "h"]);
+    await lib.replacePptx(a.id, smaller);
+    expect((await lib.list()).find((i) => i.id === a.id)?.stripped).toBe(true);
+    const copy = openZip(await lib.pptx(a.id));
+    const expected = openZip(smaller);
+    for (const name of expected.names) expect(await copy.text(name)).toBe(await expected.text(name));
+    await lib.remove(a.id);
+    const b = (await lib.list())[0];
+    await lib.remove(b.id);
+    expect(parts(store)).toBe(0);
+  });
+
+  it("keeps part counts right when a save runs while an old item is being stripped", async () => {
+    // IndexedDB answers asynchronously, so two changes at once can interleave.
+    const store = memoryStore();
+    const tick = () => new Promise((r) => setTimeout(r, 1));
+    const { get, set } = store;
+    store.get = async (key) => (await tick(), get(key));
+    store.set = async (key, value) => (await tick(), set(key, value));
+    const { lib, a, b } = await saveTwo(store);
+    const stripped = await pptxBytes(["a", "b", "c", "d", "e", "f", "g", "h"]);
+    const third = await pptxBytes(["z", "2", "3", "4", "5", "6", "7", "8"]);
+    const [, c] = await Promise.all([lib.replacePptx(a.id, stripped), lib.save({ name: "Third", category: "", recipe, pptx: third, issues: [] })]);
+    expect((await lib.list()).map((i) => i.name).sort()).toEqual(["Badge", "Icon", "Third"]);
+    // Every stored count matches the items that use the part.
+    const used: Record<string, number> = {};
+    for (const [key, value] of store.map) if (key.startsWith("lib.data.")) for (const { hash } of (value as { parts: { hash: string }[] }).parts) used[hash] = (used[hash] ?? 0) + 1;
+    expect(store.map.get("lib.refs")).toEqual(used);
+    for (const id of [a.id, b.id]) await lib.remove(id);
+    expect(openZip(await lib.pptx(c.id)).names.length).toBeGreaterThan(0);
+    await lib.remove(c.id);
+    expect(parts(store)).toBe(0);
+  });
 });
 
 describe("finding and placing items", () => {
