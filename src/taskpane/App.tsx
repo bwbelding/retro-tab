@@ -4,6 +4,7 @@ import { DismissRegular } from "@fluentui/react-icons";
 import { darkTheme, lightTheme, prefersDark } from "./theme";
 import { pane, usePane } from "./store";
 import { VIEWS, type ViewKey } from "./views";
+import { Brand } from "./views/Brand";
 import { Diagnostics } from "./views/Diagnostics";
 import { Layout } from "./views/Layout";
 import { Photos } from "./views/Photos";
@@ -105,6 +106,8 @@ export function App({ tab }: { tab: "build" | "polish" }) {
           <Shapes />
         ) : view === "photos" ? (
           <Photos />
+        ) : view === "brand" ? (
+          <Brand />
         ) : (
           <Placeholder view={current} />
         )}

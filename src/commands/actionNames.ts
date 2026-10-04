@@ -26,6 +26,10 @@ export const DO_ACTIONS = [
   "renumberCircles",
   "insertNumberSet",
   "insertHarveySet",
+  "applyFonts",
+  "applyFill1",
+  "applyFill2",
+  "applyFill3",
 ] as const;
 
 export type ActionName = (typeof SHOW_ACTIONS)[number] | (typeof DO_ACTIONS)[number];

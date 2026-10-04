@@ -26,7 +26,7 @@ export const VIEWS: ViewInfo[] = [
   { key: "shapes", nav: "Shapes", title: "Shape library", icon: ShapesRegular },
   { key: "photos", nav: "Photos", title: "Photos", icon: ImageRegular },
   { key: "layout", nav: "Layout", title: "Size & position", icon: ResizeRegular },
-  { key: "brand", nav: "Brand", title: "Brand kit", icon: ColorRegular, coming: "Saved brand colors and fonts with one-click apply. Arrives in Phase 5." },
+  { key: "brand", nav: "Brand", title: "Brand kit", icon: ColorRegular },
   { key: "tools", nav: "Tools", title: "Slide tools", icon: NoteRegular },
   { key: "check", nav: "Check", title: "Deck check", icon: ShieldCheckmarkRegular, coming: "Find off-brand fonts and colors, objects off the slide and empty placeholders. Arrives in Phase 6." },
   { key: "diagnostics", nav: "More", title: "Diagnostics", icon: MoreHorizontalRegular },
