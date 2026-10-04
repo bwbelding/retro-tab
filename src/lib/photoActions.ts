@@ -1,7 +1,7 @@
 // The photo picker's file reading and PowerPoint inserts. The model and geometry are in photos.ts.
 
 import { kv } from "./idb";
-import { isVector, asIsRect, createPhotoStore, scanStats, svgSize, fitRect, type ScanStats, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
+import { isVector, asIsRect, coversSlide, createPhotoStore, scanStats, svgSize, fitRect, type ScanStats, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
 import { currentSlide, slideSize, UserError } from "./ppt";
 
 export const photoStore = createPhotoStore(kv);
@@ -194,16 +194,39 @@ export async function insertPhoto(photo: PhotoEntry, placement: Placement, ancho
   if (placement === "background") {
     if (!Office.context.requirements.isSetSupported("PowerPointApi", "1.10")) throw new UserError("Backgrounds need PowerPoint 16.105 or later. Use Full bleed instead.");
     const pic = await prepare(photo, slide, anchor, slide);
-    await PowerPoint.run(async (context) => {
+    const removed = await PowerPoint.run(async (context) => {
       const s = await currentSlide(context);
       s.background.isMasterBackgroundFollowed = false;
       // Replace the template's background completely: its layout graphics (patterns, logos)
       // would otherwise still draw on top, like PowerPoint's "Hide background graphics".
       s.background.areBackgroundGraphicsHidden = true;
       s.background.fill.setPictureOrTextureFill({ imageBase64: pic.base64, transparency: 0 });
+      // A full-slide picture on the slide itself (common on title slides) would hide the new
+      // background, so it goes too: pictures, filled picture placeholders and picture-filled shapes.
+      s.shapes.load("items/name,items/type,items/left,items/top,items/width,items/height");
       await context.sync();
+      const covering = s.shapes.items.filter((sh) => coversSlide(sh, slide));
+      const fills = covering.map((sh) => (sh.type === "GeometricShape" ? sh.fill.load("type") : undefined));
+      const placeholders = covering.map((sh) => (sh.type === "Placeholder" ? sh.placeholderFormat.load("containedType") : undefined));
+      await context.sync();
+      const pictures = covering.filter((sh, i) => sh.type === "Image" || fills[i]?.type === "PictureAndTexture" || placeholders[i]?.containedType === "Image");
+      for (const sh of pictures) sh.delete();
+      await context.sync();
+      // Deleting a filled picture placeholder leaves it empty ("Click to insert picture") over
+      // the background, so empty full-slide picture placeholders go as well.
+      const after = context.presentation.slides.getItem(s.id).shapes;
+      after.load("items/type,items/left,items/top,items/width,items/height");
+      await context.sync();
+      const empty = after.items.filter((sh) => sh.type === "Placeholder" && coversSlide(sh, slide));
+      const formats = empty.map((sh) => sh.placeholderFormat.load("type,containedType"));
+      await context.sync();
+      empty.forEach((sh, i) => formats[i].type === "Picture" && formats[i].containedType === null && sh.delete());
+      await context.sync();
+      return pictures.map((sh) => sh.name);
     });
-    return `Set “${photo.name}” as this slide's background, with the template's background graphics hidden on this slide.`;
+    const names = removed.map((n) => `“${n}”`).join(", ");
+    const note = removed.length ? ` Removed ${removed.length === 1 ? "the full-slide picture" : "the full-slide pictures"} that covered it (${names}); ⌘Z undoes this.` : "";
+    return `Set “${photo.name}” as this slide's background, with the template's background graphics hidden on this slide.${note}`;
   }
 
   const pic = await prepare(photo, placement === "full" ? slide : undefined, anchor, slide);
