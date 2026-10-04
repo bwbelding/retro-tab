@@ -21,6 +21,8 @@ export interface PhotoEntry {
   modified: number;
   width: number;
   height: number;
+  /** An SVG graphic rather than a photo: inserted as a vector, previewed from the file itself. */
+  vector?: boolean;
 }
 
 export interface PhotoIndex {
@@ -46,6 +48,14 @@ export function isPhoto(f: { name: string; type: string }): boolean {
   return IMAGE.test(f.name) || (f.type.startsWith("image/") && f.type !== "image/svg+xml");
 }
 
+export function isVector(f: { name: string; type: string }): boolean {
+  if (f.name.startsWith(".")) return false;
+  return /\.svg$/i.test(f.name) || f.type === "image/svg+xml";
+}
+
+/** Photos and SVG graphics: everything the picker shows. */
+export const isPickable = (f: { name: string; type: string }) => isPhoto(f) || isVector(f);
+
 export interface ScanStats {
   /** Every file the folder picker returned. */
   files: number;
@@ -53,8 +63,9 @@ export interface ScanStats {
   folders: number;
   /** How many levels of subfolders below the chosen folder held files. */
   depth: number;
+  /** Photos and SVG graphics. */
   photos: number;
-  /** Files that aren't photos, by extension, most common first. */
+  /** Files that aren't photos or graphics, by extension, most common first. */
   skipped: { ext: string; count: number }[];
 }
 
@@ -68,7 +79,7 @@ export function scanStats(files: { name: string; type: string; webkitRelativePat
     const parts = (f.webkitRelativePath || f.name).split("/");
     folders.add(parts.slice(0, -1).join("/"));
     depth = Math.max(depth, parts.length - 2);
-    if (isPhoto(f)) photos++;
+    if (isPickable(f)) photos++;
     else if (!f.name.startsWith(".")) {
       const ext = f.name.includes(".") ? f.name.slice(f.name.lastIndexOf(".")).toLowerCase() : "(no extension)";
       skipped.set(ext, (skipped.get(ext) ?? 0) + 1);
@@ -96,7 +107,7 @@ export function folderOf(path: string): string {
 
 /** Which picked files are new or changed, and which known photos are gone. */
 export function planScan<F extends PickedFile>(files: F[], known: PhotoEntry[]): { root: string; unchanged: PhotoEntry[]; fresh: F[]; removed: string[] } {
-  const photos = files.filter(isPhoto);
+  const photos = files.filter(isPickable);
   const root = splitPath(photos[0]?.webkitRelativePath ?? files[0]?.webkitRelativePath ?? "").root;
   const byId = new Map(known.map((p) => [p.id, p]));
   const seen = new Set<string>();
@@ -112,16 +123,38 @@ export function planScan<F extends PickedFile>(files: F[], known: PhotoEntry[]):
   return { root, unchanged, fresh, removed: known.filter((p) => !seen.has(p.id)).map((p) => p.id) };
 }
 
-/** Top-level subfolders, for the filter chips. */
-export function topFolders(photos: PhotoEntry[]): string[] {
-  return [...new Set(photos.map((p) => p.folder.split("/")[0]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+export interface FolderInfo {
+  name: string;
+  /** Path inside the chosen folder. */
+  path: string;
+  /** Photos and graphics in it and all its subfolders. */
+  count: number;
 }
 
-/** Photos in a top-level subfolder ("" for all), matching a search, sorted by path. */
-export function filterPhotos(photos: PhotoEntry[], query: string, folder: string): PhotoEntry[] {
+/** The subfolders directly inside a folder ("" for the chosen folder), with what's in each. */
+export function childFolders(photos: PhotoEntry[], parent: string): FolderInfo[] {
+  const prefix = parent ? `${parent}/` : "";
+  const counts = new Map<string, number>();
+  for (const p of photos) {
+    if (parent && !p.folder.startsWith(prefix)) continue;
+    const rest = p.folder.slice(prefix.length);
+    if (!rest) continue;
+    const name = rest.split("/")[0];
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([name, count]) => ({ name, path: prefix + name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
+export type Kind = "all" | "photos" | "graphics";
+
+/** Photos and graphics in a folder and its subfolders ("" for all), matching a search, sorted by path. */
+export function filterPhotos(photos: PhotoEntry[], query: string, folder: string, kind: Kind = "all"): PhotoEntry[] {
   const q = query.trim().toLowerCase();
   return photos
     .filter((p) => !folder || p.folder === folder || p.folder.startsWith(`${folder}/`))
+    .filter((p) => kind === "all" || (kind === "graphics") === Boolean(p.vector))
     .filter((p) => !q || p.id.toLowerCase().includes(q))
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
@@ -163,6 +196,33 @@ export function asIsRect(w: number, h: number, slide: { width: number; height: n
   const width = w * scale;
   const height = h * scale;
   return { left: round((slide.width - width) / 2), top: round((slide.height - height) / 2), width: round(width), height: round(height) };
+}
+
+const UNITS: Record<string, number> = { "": 1, px: 1, pt: 4 / 3, pc: 16, mm: 96 / 25.4, cm: 96 / 2.54, in: 96 };
+
+/** An SVG's size in pixels from its width, height and viewBox attributes (100×100 if none). */
+export function svgSize(width: string | null, height: string | null, viewBox: string | null): { width: number; height: number } {
+  const length = (v: string | null) => {
+    const m = v?.trim().match(/^([\d.]+)\s*(px|pt|pc|mm|cm|in)?$/i);
+    return m ? Number(m[1]) * UNITS[(m[2] ?? "").toLowerCase()] : undefined;
+  };
+  const box = viewBox?.trim().split(/[\s,]+/).map(Number);
+  const vb = box?.length === 4 && box[2] > 0 && box[3] > 0 ? { width: box[2], height: box[3] } : undefined;
+  let w = length(width);
+  let h = length(height);
+  if (w && !h && vb) h = (w * vb.height) / vb.width;
+  if (h && !w && vb) w = (h * vb.width) / vb.height;
+  if (w && h) return { width: w, height: h };
+  return vb ?? { width: 100, height: 100 };
+}
+
+/** A w×h graphic scaled to fit `fraction` of an area's width and height, centered in it. */
+export function fitRect(w: number, h: number, area: { left: number; top: number; width: number; height: number }, fraction: number) {
+  const round = (v: number) => Math.round(v * 100) / 100;
+  const scale = Math.min((area.width * fraction) / w, (area.height * fraction) / h);
+  const width = w * scale;
+  const height = h * scale;
+  return { left: round(area.left + (area.width - width) / 2), top: round(area.top + (area.height - height) / 2), width: round(width), height: round(height) };
 }
 
 /** Pictures keep a format that can hold transparency; everything else becomes JPEG. */

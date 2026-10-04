@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asIsRect, cropFor, filterPhotos, folderOf, isPhoto, outputSize, outputType, planScan, scanStats, splitPath, topFolders, type PhotoEntry, type PickedFile } from "../src/lib/photos";
+import { asIsRect, childFolders, cropFor, filterPhotos, fitRect, folderOf, isPhoto, isVector, outputSize, outputType, planScan, scanStats, splitPath, svgSize, type PhotoEntry, type PickedFile } from "../src/lib/photos";
 
 const file = (path: string, size = 100, lastModified = 1): PickedFile => ({ name: path.split("/").pop()!, type: "", size, lastModified, webkitRelativePath: path });
 const entry = (id: string, size = 100, modified = 1): PhotoEntry => ({ id, name: id.split("/").pop()!, folder: folderOf(id), size, modified, width: 4000, height: 3000 });
@@ -14,6 +14,13 @@ describe("photo folder", () => {
     expect(isPhoto({ name: "logo.svg", type: "image/svg+xml" })).toBe(false);
   });
 
+  it("recognizes SVG graphics separately from photos", () => {
+    expect(isVector({ name: "pin.SVG", type: "" })).toBe(true);
+    expect(isVector({ name: "x", type: "image/svg+xml" })).toBe(true);
+    expect(isVector({ name: "._pin.svg", type: "" })).toBe(false);
+    expect(isPhoto({ name: "pin.svg", type: "" })).toBe(false);
+  });
+
   it("accepts other common photo extensions", () => {
     for (const name of ["a.jfif", "a.jpe", "a.avif", "a.TIF"]) expect(isPhoto({ name, type: "" })).toBe(true);
   });
@@ -26,14 +33,15 @@ describe("photo folder", () => {
       file("Photos/Cities/Europe/clip.mov"),
       file("Photos/Raw/shot.CR2"),
       file("Photos/Raw/shot2.cr2"),
+      file("Photos/Icons/pin.svg"),
       file("Photos/.DS_Store"),
       file("Photos/README"),
     ]);
     expect(stats).toEqual({
-      files: 8,
-      folders: 4,
+      files: 9,
+      folders: 5,
       depth: 2,
-      photos: 3,
+      photos: 4,
       skipped: [
         { ext: ".cr2", count: 2 },
         { ext: ".mov", count: 1 },
@@ -57,12 +65,24 @@ describe("photo folder", () => {
     expect(plan.removed).toEqual(["Old.jpg"]);
   });
 
-  it("filters by top-level subfolder and file name, in natural order", () => {
-    const photos = [entry("Cities/Paris 10.jpg"), entry("Cities/Paris 2.jpg"), entry("Cities/Europe/Rome.jpg"), entry("People/Team.jpg"), entry("Cover.jpg")];
-    expect(topFolders(photos)).toEqual(["Cities", "People"]);
-    expect(filterPhotos(photos, "", "Cities").map((p) => p.id)).toEqual(["Cities/Europe/Rome.jpg", "Cities/Paris 2.jpg", "Cities/Paris 10.jpg"]);
+  it("lists the subfolders inside any folder, with what's in each", () => {
+    const photos = [entry("Cities/Paris 10.jpg"), entry("Cities/Europe/Rome.jpg"), entry("Cities/Europe/Italy/Milan.jpg"), entry("People/Team.jpg"), entry("Cover.jpg")];
+    expect(childFolders(photos, "")).toEqual([
+      { name: "Cities", path: "Cities", count: 3 },
+      { name: "People", path: "People", count: 1 },
+    ]);
+    expect(childFolders(photos, "Cities")).toEqual([{ name: "Europe", path: "Cities/Europe", count: 2 }]);
+    expect(childFolders(photos, "Cities/Europe/Italy")).toEqual([]);
+  });
+
+  it("filters by folder (and everything below it), kind and file name, in natural order", () => {
+    const photos = [entry("Cities/Paris 10.jpg"), entry("Cities/Paris 2.jpg"), entry("Cities/Europe/Rome.jpg"), entry("People/Team.jpg"), entry("Cover.jpg"), { ...entry("Cities/pin.svg"), vector: true }];
+    expect(filterPhotos(photos, "", "Cities", "graphics").map((p) => p.id)).toEqual(["Cities/pin.svg"]);
+    expect(filterPhotos(photos, "", "Cities", "photos")).toHaveLength(3);
+    expect(filterPhotos(photos, "", "Cities", "photos").map((p) => p.id)).toEqual(["Cities/Europe/Rome.jpg", "Cities/Paris 2.jpg", "Cities/Paris 10.jpg"]);
+    expect(filterPhotos(photos, "", "Cities/Europe").map((p) => p.id)).toEqual(["Cities/Europe/Rome.jpg"]);
     expect(filterPhotos(photos, "team", "").map((p) => p.id)).toEqual(["People/Team.jpg"]);
-    expect(filterPhotos(photos, "", "")).toHaveLength(5);
+    expect(filterPhotos(photos, "", "")).toHaveLength(6);
   });
 });
 
@@ -85,6 +105,20 @@ describe("photo geometry", () => {
 
   it("fits an uncropped photo in 80% of the slide, centered", () => {
     expect(asIsRect(4000, 3000, { width: 960, height: 540 })).toEqual({ left: 192, top: 54, width: 576, height: 432 });
+  });
+
+  it("reads an SVG's size from width, height and viewBox", () => {
+    expect(svgSize("48", "24", null)).toEqual({ width: 48, height: 24 });
+    expect(svgSize("36pt", "18pt", null)).toEqual({ width: 48, height: 24 });
+    expect(svgSize(null, null, "0 0 512 256")).toEqual({ width: 512, height: 256 });
+    expect(svgSize("100%", "100%", "0,0,64,64")).toEqual({ width: 64, height: 64 });
+    expect(svgSize("200", null, "0 0 100 50")).toEqual({ width: 200, height: 100 });
+    expect(svgSize(null, null, null)).toEqual({ width: 100, height: 100 });
+  });
+
+  it("fits a graphic inside part of an area, centered", () => {
+    expect(fitRect(100, 100, { left: 0, top: 0, width: 960, height: 540 }, 0.4)).toEqual({ left: 372, top: 162, width: 216, height: 216 });
+    expect(fitRect(200, 100, { left: 100, top: 100, width: 100, height: 100 }, 0.8)).toEqual({ left: 110, top: 130, width: 80, height: 40 });
   });
 
   it("keeps formats that can be transparent", () => {

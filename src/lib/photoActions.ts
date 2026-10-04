@@ -1,7 +1,7 @@
 // The photo picker's file reading and PowerPoint inserts. The model and geometry are in photos.ts.
 
 import { kv } from "./idb";
-import { asIsRect, createPhotoStore, scanStats, type ScanStats, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
+import { isVector, asIsRect, createPhotoStore, scanStats, svgSize, fitRect, type ScanStats, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
 import { currentSlide, slideSize, UserError } from "./ppt";
 
 export const photoStore = createPhotoStore(kv);
@@ -38,6 +38,16 @@ function draw(img: HTMLImageElement, crop: { sx: number; sy: number; sw: number;
   return canvas;
 }
 
+/** SVGs larger than this aren't previewed (they're rarely icons and slow to draw). */
+const MAX_SVG = 2 * 1024 * 1024;
+
+/** An SVG's size in pixels, from its own width, height and viewBox. */
+function svgDimensions(text: string): { width: number; height: number } {
+  const root = new DOMParser().parseFromString(text, "image/svg+xml").documentElement;
+  if (root.localName !== "svg") throw new Error("not an SVG");
+  return svgSize(root.getAttribute("width"), root.getAttribute("height"), root.getAttribute("viewBox"));
+}
+
 export interface ScanProgress {
   done: number;
   total: number;
@@ -71,6 +81,13 @@ export async function scanFolder(files: File[], progress: (p: ScanProgress) => v
   for (const [i, file] of plan.fresh.entries()) {
     const id = splitPath(file.webkitRelativePath || file.name).path;
     try {
+      if (isVector(file)) {
+        if (file.size > MAX_SVG) throw new Error("too large to preview");
+        const size = svgDimensions(await file.text());
+        await photoStore.saveThumb(id, await file.arrayBuffer()); // an SVG previews itself
+        photos.push({ id, name: file.name, folder: folderOf(id), size: file.size, modified: file.lastModified, ...size, vector: true });
+        continue;
+      }
       const img = await loadImage(file);
       const scale = Math.min(1, THUMB / Math.max(img.naturalWidth, img.naturalHeight));
       const canvas = draw(img, { sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight }, { width: Math.max(1, Math.round(img.naturalWidth * scale)), height: Math.max(1, Math.round(img.naturalHeight * scale)) });
@@ -78,8 +95,9 @@ export async function scanFolder(files: File[], progress: (p: ScanProgress) => v
       photos.push({ id, name: file.name, folder: folderOf(id), size: file.size, modified: file.lastModified, width: img.naturalWidth, height: img.naturalHeight });
     } catch {
       unreadable++; // e.g. a format WebKit can't decode, or a cloud file that isn't downloaded
+    } finally {
+      if (i % 10 === 9 || i === plan.fresh.length - 1) progress({ done: i + 1, total: plan.fresh.length });
     }
-    if (i % 10 === 9 || i === plan.fresh.length - 1) progress({ done: i + 1, total: plan.fresh.length });
   }
 
   const gone = sameFolder ? plan.removed : (previous?.photos ?? []).map((p) => p.id);
@@ -111,12 +129,15 @@ async function prepare(
   return { base64: btoa(bin), width: w, height: h };
 }
 
-/** Insert a picture through Office's image coercion, which makes a real (croppable) picture. */
-function insertPicture(base64: string, rect: { left: number; top: number; width: number; height: number }): Promise<void> {
+/**
+ * Insert a picture (base64) or SVG graphic (text) through Office's image coercion, which makes a
+ * real picture or graphic rather than a picture-filled shape.
+ */
+function insertPicture(data: string, rect: { left: number; top: number; width: number; height: number }, svg = false): Promise<void> {
   return new Promise((resolve, reject) =>
     Office.context.document.setSelectedDataAsync(
-      base64,
-      { coercionType: Office.CoercionType.Image, imageLeft: rect.left, imageTop: rect.top, imageWidth: rect.width, imageHeight: rect.height },
+      data,
+      { coercionType: svg ? Office.CoercionType.XmlSvg : Office.CoercionType.Image, imageLeft: rect.left, imageTop: rect.top, imageWidth: rect.width, imageHeight: rect.height },
       (r) => (r.status === Office.AsyncResultStatus.Succeeded ? resolve() : reject(new Error(r.error?.message ?? "PowerPoint couldn't insert the photo."))),
     ),
   );
@@ -149,6 +170,7 @@ async function finishPicture(name: string, toBack: boolean): Promise<void> {
 export async function insertPhoto(photo: PhotoEntry, placement: Placement, anchor: Anchor): Promise<string> {
   const name = `Retro photo ${photo.name}`;
   const slide = await PowerPoint.run(async (context) => slideSize(context));
+  if (photo.vector) return insertGraphic(photo, slide);
 
   if (placement === "box") {
     const target = await PowerPoint.run(async (context) => {
@@ -187,4 +209,25 @@ export async function insertPhoto(photo: PhotoEntry, placement: Placement, ancho
   await insertPicture(pic.base64, rect);
   await finishPicture(name, placement === "full");
   return placement === "full" ? `Placed “${photo.name}” full bleed, behind everything on the slide.` : `Inserted “${photo.name}”.`;
+}
+
+/**
+ * Place an SVG graphic: inside the selected shape when one is selected (fitted, centered),
+ * otherwise centered on the slide at 40% of its size. Placement and crop don't apply to graphics.
+ */
+async function insertGraphic(photo: PhotoEntry, slide: { width: number; height: number }): Promise<string> {
+  const file = connected.get(photo.id);
+  if (!file) throw new UserError("Reconnect your photo folder to insert graphics: click Reconnect and choose the same folder.");
+  const box = await PowerPoint.run(async (context) => {
+    const sel = context.presentation.getSelectedShapes();
+    sel.load("items/left,items/top,items/width,items/height");
+    await context.sync();
+    return sel.items.length === 1 ? sel.items[0] : undefined;
+  });
+  // Icons come in at a usable size: 80% of the selected shape, or 40% of the slide.
+  const rect = box ? fitRect(photo.width, photo.height, box, 0.8) : fitRect(photo.width, photo.height, { left: 0, top: 0, ...slide }, 0.4);
+  await deselect();
+  await insertPicture(await file.text(), rect, true);
+  await finishPicture(`Retro graphic ${photo.name}`, false);
+  return box ? `Placed “${photo.name}” inside the selected shape.` : `Inserted “${photo.name}”.`;
 }
