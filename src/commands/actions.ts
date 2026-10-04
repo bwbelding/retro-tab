@@ -2,6 +2,7 @@
 // runtime, so buttons act in one click; the pane only opens to show a result or a problem.
 
 import { activity, describeError } from "../lib/activity";
+import { applyFill, applyFonts } from "../lib/brandActions";
 import { matchSize, swapPositions, type Dimension } from "../lib/layout";
 import { addStamp, addSticky, scanNotes, type StampLabel } from "../lib/notes";
 import { applyRects, requireSelection, selectedShapes, UserError } from "../lib/ppt";
@@ -101,6 +102,10 @@ export const ACTIONS: Record<ActionName, Action> = {
   insertTrend: smart("trend"),
   insertNumberSet: { view: "tools", run: async () => void (await insertSmartSet("number", 10)) },
   insertHarveySet: { view: "tools", run: async () => void (await insertSmartSet("harvey")) },
+  applyFonts: { view: "brand", run: async () => void (await applyFonts()) },
+  applyFill1: { view: "brand", run: () => applyFill(1) },
+  applyFill2: { view: "brand", run: () => applyFill(2) },
+  applyFill3: { view: "brand", run: () => applyFill(3) },
   renumberCircles: {
     view: "tools",
     run: async () => {

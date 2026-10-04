@@ -108,7 +108,11 @@ Small editable status graphics made of ordinary PowerPoint shapes, tagged with t
 Match width, height or size (to the first or last shape selected), swap positions, distribute with a fixed gap in points or cm, nudge by an exact amount, set exact X/Y/W/H for several shapes at once. All the geometry is pure functions in `layout.ts`.
 
 ### Brand kit
-Saved palette (hex values, with a "pick from selected shape" option) and saved heading and body fonts. One-click apply to fill, outline or text. Supports several kits (for example, Company, Client A).
+- **Kits:** several named kits (for example Company, Client A), one active. Each has an ordered palette and heading/body fonts.
+- **Colors:** click a swatch to apply it to the selection's fill, outline or text (groups are opened up; pictures only take outlines). Add colors by hex code or from a selected shape; reorder or remove them in Edit colors. The first three are **Fill 1 / 2 / 3** on the ribbon, which fill the selection in one click.
+- **Fonts:** heading and body fonts, typed or taken from selected text. **Apply Fonts** (ribbon and pane) gives titles the heading font and other text the body font, on the selection or, with nothing selected, the whole slide.
+- **Import colors and fonts from this deck:** reads the deck's theme (six accents, then the dark/light pair; heading and body theme fonts) into a new kit.
+- Kits are included in backups.
 
 ### Slide utilities
 - **Sticky Note and DRAFT stamp:** shapes tagged with `retro:sticky` using the tags API, so **Remove All** can strip them before you send a deck out.

@@ -445,6 +445,12 @@ async function readTheme(zip: Zip, slide: string, slideRels: Rels): Promise<Docu
   return text ? parseXml(text) : undefined;
 }
 
+/** The theme used by the first slide of an exported presentation. */
+export async function deckTheme(zip: Zip): Promise<Document | undefined> {
+  const part = slidePart(zip);
+  return part ? readTheme(zip, part, await readRels(zip, part)) : undefined;
+}
+
 function themeEffects(theme: Document | undefined): boolean[] {
   if (!theme) return [];
   const styles = Array.from(theme.getElementsByTagName("*")).find((e) => e.localName === "effectStyleLst");

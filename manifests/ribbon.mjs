@@ -162,10 +162,10 @@ export const ADDINS = [
         icon: "brandKit",
         controls: [
           { id: "BrandKit", label: "Brand Kit", tip: "Your brand colors and fonts.", icon: "brandKit", view: "brand" },
-          { id: "ApplyFonts", label: "Apply Fonts", tip: "Apply brand heading and body fonts.", icon: "applyFonts", view: "brand" },
-          { id: "Fill1", label: "Fill 1", tip: "Fill the selection with brand color 1.", icon: "fill1", view: "brand" },
-          { id: "Fill2", label: "Fill 2", tip: "Fill the selection with brand color 2.", icon: "fill2", view: "brand" },
-          { id: "Fill3", label: "Fill 3", tip: "Fill the selection with brand color 3.", icon: "fill3", view: "brand" },
+          { id: "ApplyFonts", label: "Apply Fonts", tip: "Brand fonts on the selection, or the whole slide: titles get the heading font, other text the body font.", icon: "applyFonts", run: "applyFonts" },
+          { id: "Fill1", label: "Fill 1", tip: "Fill the selection with brand color 1.", icon: "fill1", run: "applyFill1" },
+          { id: "Fill2", label: "Fill 2", tip: "Fill the selection with brand color 2.", icon: "fill2", run: "applyFill2" },
+          { id: "Fill3", label: "Fill 3", tip: "Fill the selection with brand color 3.", icon: "fill3", run: "applyFill3" },
         ],
       },
       {
