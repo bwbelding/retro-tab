@@ -2,6 +2,7 @@
 
 import { kv } from "./idb";
 import { isVector, asIsRect, coversSlide, createPhotoStore, scanStats, svgSize, fitRect, type ScanStats, cropFor, outputSize, outputType, planScan, splitPath, folderOf, type Anchor, type PhotoEntry, type PhotoIndex, type Placement } from "./photos";
+import { arrangeLogos } from "./logoGridActions";
 import { currentSlide, slideSize, UserError } from "./ppt";
 
 export const photoStore = createPhotoStore(kv);
@@ -168,6 +169,7 @@ async function finishPicture(name: string, toBack: boolean): Promise<void> {
 
 /** Place a photo. Returns a short note for the pane. */
 export async function insertPhoto(photo: PhotoEntry, placement: Placement, anchor: Anchor): Promise<string> {
+  if (placement === "grid") throw new UserError("Logo grid inserts several logos together: pick them, then click Insert as a grid.");
   const name = `Retro photo ${photo.name}`;
   const slide = await PowerPoint.run(async (context) => slideSize(context));
   if (photo.vector) return insertGraphic(photo, slide);
@@ -256,4 +258,37 @@ async function insertGraphic(photo: PhotoEntry, slide: { width: number; height: 
   await insertPicture(await file.text(), rect, true);
   await finishPicture(`Retro graphic ${photo.name}`, false);
   return box ? `Placed “${photo.name}” inside the selected shape.` : `Inserted “${photo.name}”.`;
+}
+
+/** Insert several logos (photos or graphics) and arrange them as a grid below the slide's title. */
+export async function insertLogoGrid(photos: PhotoEntry[], columns?: number): Promise<string> {
+  if (photos.length < 2) throw new UserError("Pick two or more logos for a grid.");
+  const slide = await PowerPoint.run(async (context) => slideSize(context));
+  const ids: string[] = [];
+  for (const photo of photos) {
+    const file = connected.get(photo.id);
+    if (!file) throw new UserError("Reconnect your photo folder to insert logos: click Reconnect and choose the same folder.");
+    const box = fitRect(photo.width, photo.height, { left: 0, top: 0, ...slide }, 0.2);
+    await deselect();
+    if (photo.vector) {
+      await insertPicture(await file.text(), box, true);
+    } else {
+      const pic = await prepare(photo, undefined, "center", slide);
+      await insertPicture(pic.base64, box);
+    }
+    // The new picture is selected: name it and remember it for the grid.
+    ids.push(
+      await PowerPoint.run(async (context) => {
+        const sel = context.presentation.getSelectedShapes().load("items/id");
+        await context.sync();
+        const pic = sel.items[0];
+        if (!pic) throw new Error("PowerPoint didn't select the new logo.");
+        pic.name = `Retro logo ${photo.name}`;
+        await context.sync();
+        return pic.id;
+      }),
+    );
+  }
+  await arrangeLogos(columns, ids);
+  return `Inserted ${photos.length} logos as a grid. Select them and use Layout → Logo grid to change the columns.`;
 }

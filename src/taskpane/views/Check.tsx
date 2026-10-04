@@ -10,6 +10,7 @@ import { prefs } from "../../lib/prefs";
 import { pane, usePane } from "../store";
 import { Section, Seg, useUi } from "../ui";
 import { FindUpdate } from "./FindUpdate";
+import { Storyline } from "./Storyline";
 
 const useStyles = makeStyles({
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" },
@@ -50,16 +51,17 @@ export function Check() {
     <>
       <Section>
         <Seg
-          label="Check or find"
+          label="Check, find or storyline"
           value={checkMode}
           options={[
             { value: "check", label: "Deck check" },
-            { value: "find", label: "Find & update" },
+            { value: "find", label: "Find" },
+            { value: "story", label: "Storyline" },
           ]}
           onChange={pane.setCheckMode}
         />
       </Section>
-      {checkMode === "find" ? <FindUpdate /> : <DeckCheck />}
+      {checkMode === "find" ? <FindUpdate /> : checkMode === "story" ? <Storyline /> : <DeckCheck />}
     </>
   );
 }

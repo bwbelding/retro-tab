@@ -1,5 +1,6 @@
 // Reading the deck for Deck Check, going to a problem and fixing it. The rules are in deckCheck.ts.
 
+import { BUILT_KINDS } from "./built";
 import type { Fix, ShapeSnap, SlideSnap } from "./deckCheck";
 import { KIND_TAG } from "./notes";
 import { shapeAt, slideSize, type SlideSize } from "./ppt";
@@ -32,7 +33,7 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
   const groups = Office.context.requirements.isSetSupported("PowerPointApi", "1.8");
   return PowerPoint.run(async (context) => {
     const size = await slideSize(context);
-    const slides = context.presentation.slides.load("items/id");
+    const slides = context.presentation.slides.load("items/id,items/layout/id");
     await context.sync();
     const perSlide = slides.items.map((slide) => slide.shapes.load(PROPS));
     await context.sync();
@@ -58,6 +59,7 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
         if (kind === "tracker") return;
         const p = { snap: snap(shape, [shape.id], false), shape, slide: i };
         if (NOTE_KINDS.includes(kind)) p.snap.retro = kind as "sticky" | "stamp";
+        if (BUILT_KINDS.includes(kind)) p.snap.built = true;
         all.push(p);
       }),
     );
@@ -72,6 +74,7 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
         for (const { parent, shapes } of inner) {
           for (const shape of shapes.items) {
             const child = { snap: snap(shape, [...parent.snap.path, shape.id], true), shape, slide: parent.slide };
+            if (parent.snap.built) child.snap.built = true;
             all.push(child);
             if (shape.type === "Group") frontier.push(child);
           }
@@ -123,7 +126,7 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
       pieces = next;
     }
 
-    const result: SlideSnap[] = slides.items.map((slide, index) => ({ id: slide.id, index, title: "", shapes: [] }));
+    const result: SlideSnap[] = slides.items.map((slide, index) => ({ id: slide.id, index, title: "", shapes: [], layoutId: slide.layout?.id }));
     for (const p of all) result[p.slide].shapes.push(p.snap);
     for (const s of result) {
       const title = s.shapes.find((x) => x.placeholder && TITLES.includes(x.placeholder.type) && x.content?.trim());
@@ -179,6 +182,8 @@ export async function applyFixes(requests: FixRequest[]): Promise<number> {
         case "move":
           shape.left = fix.left;
           shape.top = fix.top;
+          if (fix.width !== undefined) shape.width = fix.width;
+          if (fix.height !== undefined) shape.height = fix.height;
           break;
         case "alt":
           if (alt?.trim()) shape.altTextDescription = alt.trim();

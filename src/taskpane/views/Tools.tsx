@@ -4,9 +4,11 @@ import { EraserRegular } from "@fluentui/react-icons";
 import { addStamp, addSticky, scanNotes, STAMPS, STICKY_COLORS, type NoteCount, type StampLabel, type StickyColor } from "../../lib/notes";
 import { activity, describeError } from "../../lib/activity";
 import { selectedShapes, UserError } from "../../lib/ppt";
-import { pane } from "../store";
+import { pane, usePane } from "../store";
 import { useSmartSelection } from "../useSmartSelection";
 import { SmartEditor, SmartInsert } from "./SmartSection";
+import { AppendixSection } from "./AppendixSection";
+import { Builders } from "./Builders";
 import { TrackerSection } from "./TrackerSection";
 import { Section, Seg, useUi } from "../ui";
 
@@ -60,100 +62,126 @@ export function Tools() {
 
   const smart = useSmartSelection();
 
+  const { toolsMode: mode } = usePane();
+
   return (
     <>
-      {smart.selected && <SmartEditor selected={smart.selected} refresh={smart.refresh} />}
-      <Section title="Sticky note">
-        <Field label="Note">
-          <Textarea value={text} placeholder="Check this number with finance" onChange={(_, d) => setText(d.value)} resize="vertical" />
-        </Field>
-        <div className={s.between}>
-          <div className={s.swatches} role="radiogroup" aria-label="Note color">
-            {(Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => (
-              <button
-                key={c}
-                className={`${s.swatch} ${c === color ? s.on : ""}`}
-                style={{ background: STICKY_COLORS[c] }}
-                role="radio"
-                aria-checked={c === color}
-                aria-label={COLOR_NAMES[c]}
-                onClick={() => setColor(c)}
-              />
-            ))}
-          </div>
-          <Button
-            appearance="primary"
-            onClick={() =>
-              void report(async () => {
-                const selection = await PowerPoint.run(async (context) => (await selectedShapes(context)).rects);
-                await addSticky(text.trim() || "Note", color, selection);
-                recount();
-              })
-            }
-          >
-            Add sticky
-          </Button>
-        </div>
-      </Section>
-
-      <Section title="Stamp">
-        <Seg label="Stamp text" value={stamp} options={STAMPS.map((v) => ({ value: v, label: v }))} onChange={setStamp} />
-        <div className={ui.grid2}>
-          <Button
-            onClick={() =>
-              void report(async () => {
-                await addStamp(stamp);
-                recount();
-              })
-            }
-          >
-            This slide
-          </Button>
-          <Button
-            onClick={() =>
-              void report(async () => {
-                const n = await addStamp(stamp, true);
-                recount();
-                return `Stamped ${plural(n, "slide")}.`;
-              })
-            }
-          >
-            All slides
-          </Button>
-        </div>
-      </Section>
-
       <Section>
-        <div className={s.between}>
-          <div>
-            <b>{count ? plural(count.notes, "note") + " & stamps" : "Notes & stamps"}</b>
-            <br />
-            <Text size={200} className={ui.muted}>
-              {count ? `on ${plural(count.slides, "slide")}` : "Counting…"}
-            </Text>
-          </div>
-          <Button
-            icon={<EraserRegular />}
-            disabled={!count?.notes}
-            onClick={() =>
-              void report(async () => {
-                const r = await scanNotes(true);
-                recount();
-                return `Removed ${plural(r.notes, "note")} and stamps from ${plural(r.slides, "slide")}.`;
-              })
-            }
-          >
-            Remove all
-          </Button>
-        </div>
-        <Text size={200} className={ui.muted}>
-          Retro only removes the notes and stamps it added, so the rest of your slides are never touched.
-        </Text>
+        <Seg
+          label="Tools"
+          value={mode}
+          options={[
+            { value: "notes", label: "Notes" },
+            { value: "smart", label: "Smart" },
+            { value: "sections", label: "Sections" },
+            { value: "builders", label: "Builders" },
+          ]}
+          onChange={pane.setToolsMode}
+        />
       </Section>
+      {smart.selected && <SmartEditor selected={smart.selected} refresh={smart.refresh} />}
+      {mode === "notes" && (
+        <>
+          <Section title="Sticky note">
+            <Field label="Note">
+              <Textarea value={text} placeholder="Check this number with finance" onChange={(_, d) => setText(d.value)} resize="vertical" />
+            </Field>
+            <div className={s.between}>
+              <div className={s.swatches} role="radiogroup" aria-label="Note color">
+                {(Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => (
+                  <button
+                    key={c}
+                    className={`${s.swatch} ${c === color ? s.on : ""}`}
+                    style={{ background: STICKY_COLORS[c] }}
+                    role="radio"
+                    aria-checked={c === color}
+                    aria-label={COLOR_NAMES[c]}
+                    onClick={() => setColor(c)}
+                  />
+                ))}
+              </div>
+              <Button
+                appearance="primary"
+                onClick={() =>
+                  void report(async () => {
+                    const selection = await PowerPoint.run(async (context) => (await selectedShapes(context)).rects);
+                    await addSticky(text.trim() || "Note", color, selection);
+                    recount();
+                  })
+                }
+              >
+                Add sticky
+              </Button>
+            </div>
+          </Section>
 
-      <SmartInsert hasSelection={Boolean(smart.selected)} refresh={smart.refresh} />
+          <Section title="Stamp">
+            <Seg label="Stamp text" value={stamp} options={STAMPS.map((v) => ({ value: v, label: v }))} onChange={setStamp} />
+            <div className={ui.grid2}>
+              <Button
+                onClick={() =>
+                  void report(async () => {
+                    await addStamp(stamp);
+                    recount();
+                  })
+                }
+              >
+                This slide
+              </Button>
+              <Button
+                onClick={() =>
+                  void report(async () => {
+                    const n = await addStamp(stamp, true);
+                    recount();
+                    return `Stamped ${plural(n, "slide")}.`;
+                  })
+                }
+              >
+                All slides
+              </Button>
+            </div>
+          </Section>
 
-      <TrackerSection />
+          <Section>
+            <div className={s.between}>
+              <div>
+                <b>{count ? plural(count.notes, "note") + " & stamps" : "Notes & stamps"}</b>
+                <br />
+                <Text size={200} className={ui.muted}>
+                  {count ? `on ${plural(count.slides, "slide")}` : "Counting…"}
+                </Text>
+              </div>
+              <Button
+                icon={<EraserRegular />}
+                disabled={!count?.notes}
+                onClick={() =>
+                  void report(async () => {
+                    const r = await scanNotes(true);
+                    recount();
+                    return `Removed ${plural(r.notes, "note")} and stamps from ${plural(r.slides, "slide")}.`;
+                  })
+                }
+              >
+                Remove all
+              </Button>
+            </div>
+            <Text size={200} className={ui.muted}>
+              Retro only removes the notes and stamps it added, so the rest of your slides are never touched.
+            </Text>
+          </Section>
+        </>
+      )}
+
+      {mode === "smart" && <SmartInsert hasSelection={Boolean(smart.selected)} refresh={smart.refresh} />}
+
+      {mode === "sections" && (
+        <>
+          <TrackerSection />
+          <AppendixSection />
+        </>
+      )}
+
+      {mode === "builders" && <Builders />}
     </>
   );
 }

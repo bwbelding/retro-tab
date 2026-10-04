@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Checkbox, Field, Input, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, Checkbox, Field, Input, Select, Text, makeStyles, tokens } from "@fluentui/react-components";
 import { ArrowDownRegular, ArrowLeftRegular, ArrowRightRegular, ArrowSwapRegular, ArrowUpRegular } from "@fluentui/react-icons";
 import {
   commonValue,
@@ -18,6 +18,7 @@ import {
   type Reference,
   type Unit,
 } from "../../lib/layout";
+import { arrangeLogos } from "../../lib/logoGridActions";
 import { applyRects, requireSelection, UserError } from "../../lib/ppt";
 import { prefs } from "../../lib/prefs";
 import { pane } from "../store";
@@ -236,6 +237,43 @@ export function Layout() {
           Apply
         </Button>
       </Section>
+
+      <LogoGridSection selected={n} />
     </>
+  );
+}
+
+/** Arrange the selected logos in an even grid below the title, each equally prominent. */
+function LogoGridSection({ selected }: { selected: number }) {
+  const ui = useUi();
+  const [columns, setColumns] = useState(0);
+  return (
+    <Section title="Logo grid">
+      <Field label="Columns">
+        <Select value={String(columns)} onChange={(_, d) => setColumns(Number(d.value))}>
+          <option value="0">Automatic</option>
+          {[2, 3, 4, 5, 6].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Button
+        appearance="primary"
+        disabled={selected < 2}
+        style={{ alignSelf: "flex-start" }}
+        onClick={() =>
+          void arrangeLogos(columns || undefined)
+            .then((count) => pane.showMessage({ intent: "success", text: `Arranged ${count} logos in a grid below the title.` }))
+            .catch((e) => pane.showMessage({ intent: e instanceof UserError ? "warning" : "error", text: e instanceof Error ? e.message : String(e) }))
+        }
+      >
+        Arrange selected logos
+      </Button>
+      <Text size={200} className={ui.muted}>
+        Select the logos (any pictures), then arrange them: same spacing, each sized to look equally prominent whatever its shape. To insert logos from your photo folder as a grid, use Photos → Logo grid.
+      </Text>
+    </Section>
   );
 }

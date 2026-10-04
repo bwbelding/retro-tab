@@ -3,7 +3,7 @@
 
 import type { SlideSize } from "./ppt";
 
-export type Rule = "unfinished" | "notes" | "fonts" | "colors" | "smalltext" | "offslide" | "placeholders" | "titles" | "alttext";
+export type Rule = "unfinished" | "notes" | "fonts" | "colors" | "smalltext" | "offslide" | "position" | "placeholders" | "titles" | "alttext";
 
 export const RULES: { rule: Rule; label: string; help: string }[] = [
   { rule: "unfinished", label: "Unfinished", help: "Text like XX, TBD, ??, [insert …] or lorem ipsum." },
@@ -12,6 +12,7 @@ export const RULES: { rule: Rule; label: string; help: string }[] = [
   { rule: "colors", label: "Colors", help: "Fill and text colors that aren't in your kit (white and black are always fine)." },
   { rule: "smalltext", label: "Small text", help: "Text under 12 pt, hard to read when presented." },
   { rule: "offslide", label: "Off-slide", help: "Objects that run past the edge of the slide." },
+  { rule: "position", label: "Position", help: "Titles and repeated logos that sit slightly off from where they are on other slides, so the deck jumps when you click through." },
   { rule: "placeholders", label: "Placeholders", help: "Empty title, text and picture placeholders." },
   { rule: "titles", label: "Titles", help: "Slides without a title, and titles used on more than one slide." },
   { rule: "alttext", label: "Alt text", help: "Pictures without alt text (unless marked decorative)." },
@@ -50,6 +51,8 @@ export interface ShapeSnap {
   picture?: { alt: string; decorative: boolean };
   /** A sticky note or stamp Retro added. */
   retro?: "sticky" | "stamp";
+  /** Part of a Smart Element, KPI tiles or roadmap Retro built: its status colors are meant to stand out. */
+  built?: boolean;
 }
 
 export interface SlideSnap {
@@ -57,6 +60,8 @@ export interface SlideSnap {
   index: number;
   title: string;
   shapes: ShapeSnap[];
+  /** The slide's layout, so titles are compared with others on the same layout. */
+  layoutId?: string;
 }
 
 export interface Kit {
@@ -73,7 +78,7 @@ export type Fix =
   | { kind: "font"; path: string[]; runs: Span[]; to: string }
   | { kind: "textColor"; path: string[]; runs: Span[]; to: string }
   | { kind: "fill"; path: string[]; to: string }
-  | { kind: "move"; path: string[]; left: number; top: number }
+  | { kind: "move"; path: string[]; left: number; top: number; width?: number; height?: number }
   | { kind: "delete"; path: string[] }
   /** Needs the alt text from you. */
   | { kind: "alt"; path: string[] };
@@ -219,7 +224,7 @@ export function checkDeck(slides: SlideSnap[], kit: Kit | undefined, size: Slide
         }
       }
 
-      if (rules.has("colors") && palette.length) {
+      if (rules.has("colors") && palette.length && !s.built) {
         const bad = (c: string | undefined) => (c && /^#[0-9A-F]{6}$/i.test(c) && !allowed.has(c.toUpperCase()) ? c.toUpperCase() : undefined);
         const fill = bad(s.fill);
         if (fill) {
@@ -266,6 +271,77 @@ export function checkDeck(slides: SlideSnap[], kit: Kit | undefined, size: Slide
         else issues.push({ rule: "titles", ...at, shapeId: titleShape?.path[0] ?? "", shape: titleShape ? describeShape(titleShape) : "This slide", label: "Title", value: clip(title, 32), text: `is the same as slide ${first + 1}'s` });
       }
     }
+  }
+  if (rules.has("position")) issues.push(...positionIssues(slides));
+  return issues.sort((a, b) => a.slideIndex - b.slideIndex);
+}
+
+type Box = { left: number; top: number; width: number; height: number };
+/** Further than this from the usual spot is probably on purpose, not drift. */
+const DRIFT = 36;
+const boxKey = (b: Box) => [b.left, b.top, b.width, b.height].map((v) => Math.round(v)).join(",");
+const apart = (a: Box, b: Box) => Math.max(Math.abs(a.left - b.left), Math.abs(a.top - b.top), Math.abs(a.width - b.width), Math.abs(a.height - b.height));
+
+/** The spot most of the boxes share (to the point), if at least two do. */
+function usualSpot(boxes: Box[]): Box | undefined {
+  const counts = new Map<string, { box: Box; n: number }>();
+  for (const b of boxes) {
+    const k = boxKey(b);
+    counts.set(k, { box: counts.get(k)?.box ?? b, n: (counts.get(k)?.n ?? 0) + 1 });
+  }
+  const best = [...counts.values()].sort((a, b) => b.n - a.n)[0];
+  return best && best.n >= 2 ? best.box : undefined;
+}
+
+/**
+ * Titles that drift from where the other slides with the same layout have them, and logos (the
+ * same-size picture in the same corner of three or more slides) that drift from their usual spot.
+ */
+export function positionIssues(slides: SlideSnap[]): Issue[] {
+  const issues: Issue[] = [];
+  const flag = (slide: SlideSnap, s: ShapeSnap, what: string, spot: Box) =>
+    issues.push({
+      rule: "position",
+      slideId: slide.id,
+      slideIndex: slide.index,
+      slideTitle: slide.title,
+      shapeId: s.path[0],
+      shape: describeShape(s),
+      label: what,
+      text: `is ${Math.max(1, Math.round(apart(s, spot)))} pt off from where it is on other slides`,
+      // Only the spot's position and size: it's another slide's shape, not this one.
+      fix: { kind: "move", path: s.path, left: spot.left, top: spot.top, width: spot.width, height: spot.height },
+      fixLabel: "Snap to usual spot",
+    });
+
+  // Titles, by layout.
+  const titles = slides.flatMap((slide) => {
+    const s = slide.shapes.find((x) => !x.nested && x.placeholder && TITLE_TYPES.includes(x.placeholder.type));
+    return s ? [{ slide, s }] : [];
+  });
+  for (const layout of new Set(titles.map((t) => t.slide.layoutId ?? ""))) {
+    const group = titles.filter((t) => (t.slide.layoutId ?? "") === layout);
+    if (group.length < 3) continue;
+    const spot = usualSpot(group.map((t) => t.s));
+    if (!spot) continue;
+    for (const { slide, s } of group) {
+      const d = apart(s, spot);
+      if (d > TOLERANCE && d <= DRIFT) flag(slide, s, "Title", spot);
+    }
+  }
+
+  // Logos: pictures of about the same size near the same spot on three or more slides.
+  const pictures = slides.flatMap((slide) => slide.shapes.filter((s) => s.picture && !s.nested).map((s) => ({ slide, s })));
+  const used = new Set<ShapeSnap>();
+  for (const { s: seed } of pictures) {
+    if (used.has(seed)) continue;
+    const family = pictures.filter(({ s }) => !used.has(s) && apart(s, seed) <= DRIFT && Math.abs(s.width / seed.width - 1) < 0.05 && Math.abs(s.height / seed.height - 1) < 0.05);
+    // One per slide: the logo repeats across slides, not within one.
+    if (new Set(family.map((f) => f.slide.id)).size < 3) continue;
+    family.forEach((f) => used.add(f.s));
+    const spot = usualSpot(family.map((f) => f.s));
+    if (!spot) continue;
+    for (const { slide, s } of family) if (apart(s, spot) > TOLERANCE) flag(slide, s, "Logo", spot);
   }
   return issues;
 }

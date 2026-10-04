@@ -123,7 +123,7 @@ export interface Backup {
 }
 
 /** Settings (kv keys) that go into backups. */
-export const SETTING_KEYS = ["pref.matchReference", "pref.photo", "pref.checkRulesOff", "brand.kits"];
+export const SETTING_KEYS = ["pref.matchReference", "pref.photo", "pref.checkRulesOff", "pref.fyStart", "brand.kits"];
 
 /** Version 1.5.0 stored the star as "favourite"; read it as "favorite". */
 function upgrade(item: LibraryItem & { favourite?: boolean }): LibraryItem {

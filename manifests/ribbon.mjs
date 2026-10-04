@@ -101,6 +101,8 @@ export const ADDINS = [
         icon: "photos",
         controls: [
           { id: "Photos", label: "Photos", tip: "Browse your licensed photo folder.", icon: "photos", view: "photos" },
+          { id: "Roadmap", label: "Roadmap", tip: "Draw a quarterly roadmap from rows you paste: lane, item, start, end.", icon: "roadmap", run: "openBuilders" },
+          { id: "Kpis", label: "KPIs", tip: "Make big-number KPI tiles or a scorecard table from rows you paste.", icon: "kpi", run: "openBuilders" },
           { office: "TextBoxInsert" },
           { office: "TableInsertGallery" },
           { office: "PictureInsertFromFilePowerPoint" },
@@ -184,6 +186,7 @@ export const ADDINS = [
         icon: "deckCheck",
         controls: [
           { id: "DeckCheck", label: "Deck Check", tip: "Check before you send: unfinished text, leftover notes, off-brand fonts and colors, small text, off-slide objects, titles and more, with one-click fixes.", icon: "deckCheck", view: "check" },
+          { id: "Storyline", label: "Storyline", tip: "Every slide title in order, to check the deck reads as one argument. Edit titles in place.", icon: "storyline", run: "openStoryline" },
           { id: "FindUpdate", label: "Find & Update", tip: "Find a number or phrase on every slide, including tables and groups, and update the ones you choose.", icon: "findUpdate", run: "openFind" },
           {
             id: "Tracker",
@@ -191,8 +194,19 @@ export const ADDINS = [
             tip: "Section tracker and agenda slide.",
             icon: "tracker",
             menu: [
-              { id: "TrackerOpen", label: "Set up tracker…", tip: "Define sections and apply the tracker.", icon: "tracker", view: "tools" },
+              { id: "TrackerOpen", label: "Set up tracker…", tip: "Define sections and apply the tracker.", icon: "tracker", run: "openTracker" },
               { id: "TrackerRefresh", label: "Refresh tracker", tip: "Rebuild the tracker and agenda after adding, moving or removing slides.", icon: "tracker", run: "refreshTracker" },
+            ],
+          },
+          {
+            id: "Appendix",
+            label: "Appendix",
+            tip: "Mark slides as appendix and move them to the end behind an Appendix divider.",
+            icon: "appendix",
+            menu: [
+              { id: "AppendixMark", label: "Mark as appendix", tip: "Mark the selected slides as appendix.", icon: "appendix", run: "markAppendix" },
+              { id: "AppendixMove", label: "Move appendix to end", tip: "Move appendix slides to the end, behind an Appendix divider.", icon: "appendix", run: "moveAppendix" },
+              { id: "AppendixOpen", label: "Appendix…", tip: "See and change which slides are appendix.", icon: "appendix", run: "openTracker" },
             ],
           },
         ],

@@ -18,10 +18,12 @@ interface PaneState {
   /** The ribbon asked for the library's save form; cleared when that form closes. */
   saveRequested?: boolean;
   /** What the Check view shows. */
-  checkMode: "check" | "find";
+  checkMode: "check" | "find" | "story";
+  /** What the Tools view shows. */
+  toolsMode: "notes" | "smart" | "sections" | "builders";
 }
 
-let state: PaneState = { view: "diagnostics", library: "shapes", checkMode: "check" };
+let state: PaneState = { view: "diagnostics", library: "shapes", checkMode: "check", toolsMode: "notes" };
 const listeners = new Set<() => void>();
 
 function set(next: Partial<PaneState>) {
@@ -31,7 +33,10 @@ function set(next: Partial<PaneState>) {
 
 export const pane = {
   init(view: ViewKey) {
-    state = { view, library: "shapes", checkMode: "check" };
+    state = { view, library: "shapes", checkMode: "check", toolsMode: "notes" };
+  },
+  setToolsMode(toolsMode: PaneState["toolsMode"]) {
+    set({ toolsMode });
   },
   setCheckMode(checkMode: PaneState["checkMode"]) {
     set({ checkMode });

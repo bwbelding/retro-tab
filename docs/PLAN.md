@@ -48,7 +48,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organized by 
 **Retro Build: make, note and arrange content**
 1. **Notes:** Sticky Note (R) · Stamp ▾ (R) · Remove All (R)
 2. **Shapes:** My Library (R) · Save to Library (R) · Recent ▾ (R) · Smart ▾ (R) · Slides ▾ (R) · Shapes gallery (B)
-3. **Insert:** Photos (R) · Text Box (B) · Table (B) · Picture (B)
+3. **Insert:** Photos (R) · Roadmap (R) · KPIs (R) · Text Box (B) · Table (B) · Picture (B)
 4. **Text:** Font Size Up/Down, Bold, Bullets, Line Spacing, Font Color (all B, icon-only)
 5. **Arrange:** Align & Distribute ▾, Group ▾, Rotate ▾, Selection Pane, Bring to Front, Send to Back (all B)
 6. **Size & Position:** Match Width · Match Height · Match Size · Swap Positions · Gap Distribute… · Exact Size… (all R)
@@ -56,7 +56,7 @@ Groups mix PowerPoint's built-in buttons (B) with Retro's own (R), organized by 
 **Retro Polish: style and review it**
 1. **Format:** Format Painter, Shape Fill, Shape Outline, Crop (all B)
 2. **Brand:** Brand Kit · Apply Fonts · Fill 1 / 2 / 3 (all R)
-3. **Review:** Deck Check · Find & Update · Tracker ▾ (R)
+3. **Review:** Deck Check · Storyline · Find & Update · Tracker ▾ · Appendix ▾ (R)
 4. **Retro:** Diagnostics · Backup ▾ (R)
 
 Built-in control IDs come from Microsoft's published list (OfficeDev/office-control-ids), checked on PowerPoint for Mac 16.113. "Text Box Options" isn't on that list, so **Font Color** takes its slot. Mac differences found in testing: Font Size Down needs the standard ID `FontSizeDecrease` (the list's `FontSizeDecrese` shows nothing); Picture works as `PictureInsertFromFilePowerPoint`; no ID for **Icons** shows on Mac, so Icons stays on PowerPoint's own Insert tab. Built-in buttons that act on a selection are grayed until something is selected, as on the Home tab.
@@ -137,6 +137,7 @@ The Check pane runs as soon as it opens (or on **Run again**) and lists issues b
 - **Colors:** fill and text colors that aren't in the kit, with the closest kit color. White and black are always fine.
 - **Small text:** under 12 pt.
 - **Off-slide:** objects running past an edge, giving the distance, or entirely off the slide.
+- **Position:** titles that sit 1–36 pt off from where other slides with the same layout have them, and repeated logos (a same-size picture near the same spot on 3+ slides) slightly off their usual spot. **Snap to usual spot** fixes either.
 - **Empty placeholders:** title, text, content and picture placeholders.
 - **Titles:** slides without a title, and titles used on more than one slide.
 - **Alt text:** missing on pictures, unless they're marked decorative.
@@ -156,6 +157,35 @@ Check pane → **Find & update** (or **Find & Update** on the ribbon).
 - **Find** a number or phrase in every slide's text, including grouped shapes and table cells, but not Retro's tracker. Matches are shown in context, grouped by slide, each with a checkbox and Go to.
 - **Whole words and numbers** (on by default): "4.2" matches "$4.2M" but not "14.2%" or "4.25".
 - **Replace** changes the ticked matches and keeps the text's formatting. Table cells are rewritten whole. Each text is read again first, and left alone if it changed since the search.
+
+### Storyline
+Check pane → **Storyline** (or **Storyline** on the ribbon).
+- Every slide's title in order, editable in place. Read alone, the titles should tell the story.
+- Titles under 5 words are marked **Topic label**: they name a topic ("Market size") instead of making the point ("Market grew 30% in Q3"). Slides with an empty title are marked too.
+
+### Roadmap and KPI builders
+Tools → **Builders** (or **Roadmap** / **KPIs** on the ribbon). Both read rows pasted from Excel, or typed with | or commas. Both draw below the slide's title in the brand kit's colors and body font, at 12 pt or more. Both store their rows on what they draw, so selecting it later reopens the rows and **Update** replaces it in place.
+- **Roadmap:**
+  - Rows are lane, item, start, end; leave the end empty for a milestone.
+  - Dates can be quarters (Q1 FY27, Q1 2027, FY27 Q1) or months (Mar 2027, 2027-03). Months are placed in their fiscal quarter, using the fiscal-year start month set in the pane. A fiscal year is named for the year it ends in.
+  - It draws quarter columns, lanes, bars and diamond milestones. Items that overlap within a lane stack.
+- **KPIs:**
+  - Rows are metric, value, change, status. A change looks like +12% or −3 pts; a status is G, A or R, or words like "at risk".
+  - It makes either **big-number tiles** (up to 4 in a row) or a **scorecard table**. Changes and statuses show green, amber or red, matching the traffic lights.
+  - Deck Check leaves these status colors alone.
+
+### Logo grid
+Arranges logos in an even grid below the title.
+- **Sizing:** each logo is sized to the same area, so a wide wordmark and a square icon look equally prominent. Only an extreme shape is shrunk on its own.
+- **Columns:** automatic (cells about 2:1) or 2–6.
+- **Logos already on the slide:** Layout → **Logo grid** → *Arrange selected logos*.
+- **From the photo folder:** Photos → placement **Logo grid** → click logos in order → *Insert as a grid*.
+
+### Appendix mover
+Tools → **Sections** → Appendix (or **Appendix ▾** on the ribbon).
+- **Mark as appendix** tags the selected slides.
+- **Move appendix to end** puts them at the end in their order, behind an "Appendix" divider made once from the template's Section Header layout.
+- The tracker skips appendix slides and the divider.
 
 ### Security
 - No network calls except Retro's own `version.json` (the Diagnostics hosting check). Photos, shapes and settings stay in the pane's storage on the Mac.
@@ -180,7 +210,7 @@ Shows PowerPoint version and platform, a table of supported API versions, whethe
 5. **Brand kit.**
 6. **Section tracker + Deck check.** Sections are marked in Retro, and the tracker goes on every slide in a section. Deck Check treats white and black as on-brand.
 7. **Slide library, Deck Check fixes, pre-send rules, Find & update.** Inserted slides match the open deck's theme, saved slides keep their speaker notes, and text under 12 pt counts as small.
-8. **Next, from the feature audit:** storyline view (titles at a glance), roadmap builder, KPI and scorecard builder, logo grid, title-position check, appendix mover.
+8. **Storyline, roadmap and KPI builders, logo grid, position check, appendix mover.** Titles under 5 words count as topic labels. Roadmaps use quarters with a fiscal-year start month. Logos come from the slide or the photo folder. KPIs can be tiles or a table, chosen each time. The Tools pane is split into Notes, Smart, Sections and Builders.
 
 Each phase is its own PR with a short manual test checklist for your Mac.
 
