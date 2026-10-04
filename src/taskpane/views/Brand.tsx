@@ -167,7 +167,7 @@ export function Brand() {
             </div>
             <Button
               size="small"
-              appearance="subtle"
+             
               icon={<DocumentArrowDownRegular />}
               style={{ alignSelf: "flex-start" }}
               onClick={() =>
@@ -204,11 +204,11 @@ export function Brand() {
                   />
                   {editing ? (
                     <div className={s.editRow}>
-                      <Button size="small" appearance="transparent" icon={<ArrowLeftRegular />} aria-label={`Move ${c} left`} disabled={i === 0} onClick={() => update({ colors: moveColor(kit.colors, i, -1) })} />
-                      <Button size="small" appearance="transparent" icon={<DismissRegular />} aria-label={`Remove ${c}`} onClick={() => update({ colors: kit.colors.filter((x) => x !== c) })} />
+                      <Button size="small" appearance="outline" icon={<ArrowLeftRegular />} aria-label={`Move ${c} left`} disabled={i === 0} onClick={() => update({ colors: moveColor(kit.colors, i, -1) })} />
+                      <Button size="small" appearance="outline" icon={<DismissRegular />} aria-label={`Remove ${c}`} onClick={() => update({ colors: kit.colors.filter((x) => x !== c) })} />
                       <Button
                         size="small"
-                        appearance="transparent"
+                        appearance="outline"
                         icon={<ArrowRightRegular />}
                         aria-label={`Move ${c} right`}
                         disabled={i === kit.colors.length - 1}
@@ -249,7 +249,7 @@ export function Brand() {
             </div>
           </>
         ) : (
-          <Button size="small" appearance="subtle" icon={<EditRegular />} style={{ alignSelf: "flex-start" }} onClick={() => setEditing(true)}>
+          <Button size="small" icon={<EditRegular />} style={{ alignSelf: "flex-start" }} onClick={() => setEditing(true)}>
             Edit colors
           </Button>
         )}

@@ -291,7 +291,7 @@ export function Diagnostics({ tab }: { tab: "build" | "polish" }) {
           <Button icon={<FolderOpenRegular />} onClick={() => folderInput.current?.click()}>
             Test folder picking
           </Button>
-          <Button appearance="subtle" icon={<ArrowClockwiseRegular />} onClick={() => void run()}>
+          <Button icon={<ArrowClockwiseRegular />} onClick={() => void run()}>
             Run again
           </Button>
         </div>
