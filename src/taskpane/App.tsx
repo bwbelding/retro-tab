@@ -5,10 +5,10 @@ import { darkTheme, lightTheme, prefersDark } from "./theme";
 import { pane, usePane } from "./store";
 import { VIEWS, type ViewKey } from "./views";
 import { Brand } from "./views/Brand";
+import { Check } from "./views/Check";
 import { Diagnostics } from "./views/Diagnostics";
 import { Layout } from "./views/Layout";
 import { Photos } from "./views/Photos";
-import { Placeholder } from "./views/Placeholder";
 import { Shapes } from "./views/Shapes";
 import { Tools } from "./views/Tools";
 
@@ -68,8 +68,6 @@ export function App({ tab }: { tab: "build" | "polish" }) {
 
   const go = (key: ViewKey) => pane.setView(key);
 
-  const current = VIEWS.find((v) => v.key === view)!;
-
   return (
     <FluentProvider theme={dark ? darkTheme : lightTheme} className={styles.root}>
       <nav className={styles.nav} aria-label="Retro sections">
@@ -96,9 +94,7 @@ export function App({ tab }: { tab: "build" | "polish" }) {
             />
           </MessageBar>
         )}
-        {view === "diagnostics" ? (
-          <Diagnostics tab={tab} />
-        ) : view === "layout" ? (
+        {view === "layout" ? (
           <Layout />
         ) : view === "tools" ? (
           <Tools />
@@ -108,8 +104,10 @@ export function App({ tab }: { tab: "build" | "polish" }) {
           <Photos />
         ) : view === "brand" ? (
           <Brand />
+        ) : view === "check" ? (
+          <Check />
         ) : (
-          <Placeholder view={current} />
+          <Diagnostics tab={tab} />
         )}
       </main>
     </FluentProvider>

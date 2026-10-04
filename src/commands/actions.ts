@@ -8,6 +8,7 @@ import { addStamp, addSticky, scanNotes, type StampLabel } from "../lib/notes";
 import { applyRects, requireSelection, selectedShapes, UserError } from "../lib/ppt";
 import { prefs } from "../lib/prefs";
 import { insertSmart, insertSmartSet, renumberSlide, type SmartKind } from "../lib/smart";
+import { refreshTracker } from "../lib/trackerActions";
 import { pane } from "../taskpane/store";
 import type { ViewKey } from "../taskpane/views";
 import type { ActionName } from "./actionNames";
@@ -106,6 +107,7 @@ export const ACTIONS: Record<ActionName, Action> = {
   applyFill1: { view: "brand", run: () => applyFill(1) },
   applyFill2: { view: "brand", run: () => applyFill(2) },
   applyFill3: { view: "brand", run: () => applyFill(3) },
+  refreshTracker: { view: "tools", run: async () => void (await refreshTracker()) },
   renumberCircles: {
     view: "tools",
     run: async () => {
