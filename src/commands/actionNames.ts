@@ -34,6 +34,11 @@ export const DO_ACTIONS = [
   "openSlideLibrary",
   "saveSlides",
   "openFind",
+  "openStoryline",
+  "openTracker",
+  "openBuilders",
+  "markAppendix",
+  "moveAppendix",
 ] as const;
 
 export type ActionName = (typeof SHOW_ACTIONS)[number] | (typeof DO_ACTIONS)[number];

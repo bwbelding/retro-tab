@@ -139,3 +139,50 @@ export function commonValue(rects: Rect[], key: keyof Omit<Rect, "id">): number 
   const first = rects[0][key];
   return rects.every((r) => Math.abs(r[key] - first) < 0.01) ? first : undefined;
 }
+
+/** Columns for a logo grid when you don't pick: about twice as wide as tall, never more than 6. */
+export function gridColumns(count: number, area: { width: number; height: number }): number {
+  if (count <= 1) return 1;
+  // Cells about 2:1 suit most logos: c columns, r rows with (w/c)/(h/r) close to 2.
+  let best = 1;
+  let bestScore = Infinity;
+  for (let c = 1; c <= Math.min(6, count); c++) {
+    const r = Math.ceil(count / c);
+    const score = Math.abs(Math.log(area.width / c / (area.height / r) / 2)) + (r * c - count) * 0.05;
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * Logos placed in an even grid, each centered in its cell and sized to the same area, so a wide
+ * wordmark and a square icon look equally prominent. Each keeps its own proportions and stays
+ * inside its cell with room around it.
+ */
+export function logoGrid(sizes: { width: number; height: number }[], area: { left: number; top: number; width: number; height: number }, columns = gridColumns(sizes.length, area)): Omit<Rect, "id">[] {
+  const rows = Math.ceil(sizes.length / columns);
+  const cellW = area.width / columns;
+  const cellH = area.height / rows;
+  const maxW = cellW * 0.75;
+  const maxH = cellH * 0.6;
+  // The shared area: the largest every logo fits at, but not under half the usual size because
+  // of one extreme logo (that one is shrunk on its own below).
+  const usual = maxW * maxH * 0.45;
+  const fits = Math.min(...sizes.map((s) => Math.min((maxW * maxW * s.height) / s.width, (maxH * maxH * s.width) / s.height)));
+  const target = Math.max(Math.min(usual, fits), usual / 2);
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  return sizes.map((s, i) => {
+    const ratio = s.width / s.height;
+    let width = Math.sqrt(target * ratio);
+    let height = width / ratio;
+    const shrink = Math.min(1, maxW / width, maxH / height);
+    width *= shrink;
+    height *= shrink;
+    const cx = area.left + (i % columns) * cellW + cellW / 2;
+    const cy = area.top + Math.floor(i / columns) * cellH + cellH / 2;
+    return { left: r2(cx - width / 2), top: r2(cy - height / 2), width: r2(width), height: r2(height) };
+  });
+}

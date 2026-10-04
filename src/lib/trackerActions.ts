@@ -1,6 +1,7 @@
 // The section tracker in PowerPoint: marking sections, building the tracker bars and the agenda
 // slide. The model and geometry are in tracker.ts.
 
+import { APPENDIX_TAG } from "./appendix";
 import { activeKit } from "./brand";
 import { brandStore } from "./brandActions";
 import { KIND_TAG } from "./notes";
@@ -42,6 +43,8 @@ interface DeckSlides {
   slides: PowerPoint.Slide[];
   sections: Section[];
   agenda: number;
+  /** Appendix slides (and their divider), which get no tracker. */
+  appendix: Set<number>;
 }
 
 /** Every slide with its section and agenda tags. */
@@ -49,12 +52,17 @@ async function deckSlides(context: PowerPoint.RequestContext): Promise<DeckSlide
   const slides = context.presentation.slides;
   slides.load("items/id");
   await context.sync();
-  const tags = slides.items.map((s) => ({ section: s.tags.getItemOrNullObject(SECTION_TAG).load("value"), agenda: s.tags.getItemOrNullObject(AGENDA_TAG).load("value") }));
+  const tags = slides.items.map((s) => ({
+    section: s.tags.getItemOrNullObject(SECTION_TAG).load("value"),
+    agenda: s.tags.getItemOrNullObject(AGENDA_TAG).load("value"),
+    appendix: s.tags.getItemOrNullObject(APPENDIX_TAG).load("value"),
+  }));
   await context.sync();
   return {
     slides: slides.items,
     sections: sectionsFrom(tags.map((t) => (t.section.isNullObject ? undefined : t.section.value))),
     agenda: tags.findIndex((t) => !t.agenda.isNullObject),
+    appendix: new Set(tags.flatMap((t, i) => (t.appendix.isNullObject ? [] : [i]))),
   };
 }
 
@@ -249,7 +257,7 @@ export async function applyTracker(settings: TrackerSettings): Promise<string> {
     const built: { slide: PowerPoint.Slide; parts: PowerPoint.Shape[] }[] = [];
     deck.slides.forEach((slide, i) => {
       const section = sectionOf(deck.sections, i);
-      if (section < 0 || i === deck.agenda) return;
+      if (section < 0 || i === deck.agenda || deck.appendix.has(i)) return;
       built.push({ slide, parts: trackerParts(settings.style, settings.position, size, names, section).map((part) => addPart(slide, part, color, font)) });
     });
     await context.sync();

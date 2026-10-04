@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   commonValue,
+  gridColumns,
+  logoGrid,
   distributeWithGap,
   fromPoints,
   matchSize,
@@ -99,5 +101,40 @@ describe("commonValue", () => {
   it("returns the shared value or undefined when mixed", () => {
     expect(commonValue([r("a", 1, 0, 5, 5), r("b", 1, 9, 6, 5)], "left")).toBe(1);
     expect(commonValue([r("a", 1, 0, 5, 5), r("b", 1, 9, 6, 5)], "width")).toBeUndefined();
+  });
+});
+
+describe("logo grid", () => {
+  const area = { left: 36, top: 120, width: 888, height: 384 };
+  const logos = [
+    { width: 400, height: 100 }, // wordmark
+    { width: 200, height: 200 }, // square icon
+    { width: 300, height: 120 },
+    { width: 90, height: 160 }, // tall
+    { width: 500, height: 80 },
+    { width: 220, height: 150 },
+  ];
+
+  it("picks columns that give logo-shaped cells", () => {
+    expect(gridColumns(6, area)).toBe(3);
+    expect(gridColumns(12, area)).toBe(4);
+    expect(gridColumns(1, area)).toBe(1);
+  });
+
+  it("gives every logo the same area, keeps its proportions, and centers it in its cell", () => {
+    const rects = logoGrid(logos, area, 3);
+    const areas = rects.map((r) => r.width * r.height);
+    expect(Math.max(...areas) / Math.min(...areas)).toBeLessThan(1.05);
+    rects.forEach((r, i) => expect(r.width / r.height).toBeCloseTo(logos[i].width / logos[i].height, 2));
+    // First cell is 296 × 192 at (36, 120): its logo's center is the cell's center.
+    expect(rects[0].left + rects[0].width / 2).toBeCloseTo(36 + 148, 1);
+    expect(rects[0].top + rects[0].height / 2).toBeCloseTo(120 + 96, 1);
+    expect(rects[4].top).toBeGreaterThan(rects[1].top + 100); // second row
+  });
+
+  it("shrinks very wide or tall logos to fit their cell", () => {
+    const [wide, tall] = logoGrid([{ width: 2000, height: 50 }, { width: 40, height: 900 }], area, 2);
+    expect(wide.width).toBeLessThanOrEqual((888 / 2) * 0.75 + 0.01);
+    expect(tall.height).toBeLessThanOrEqual(384 * 0.6 + 0.01);
   });
 });

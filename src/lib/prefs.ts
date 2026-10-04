@@ -9,6 +9,7 @@ const MATCH_REF = "pref.matchReference";
 const PHOTO = "pref.photo";
 // The rules switched off (not on), so rules added later start switched on.
 const CHECK_RULES_OFF = "pref.checkRulesOff";
+const FY_START = "pref.fyStart";
 
 async function read<T>(key: string, fallback: T): Promise<T> {
   try {
@@ -30,6 +31,9 @@ export const prefs = {
   /** How photos were last placed and cropped. */
   photo: () => read<{ placement: Placement; anchor: Anchor }>(PHOTO, { placement: "full", anchor: "center" }),
   setPhoto: (value: { placement: Placement; anchor: Anchor }) => kv.set(PHOTO, value),
+  /** The month (1–12) the fiscal year starts, for roadmaps. */
+  fyStart: () => read<number>(FY_START, 1),
+  setFyStart: (month: number) => kv.set(FY_START, month),
   /** Which Deck Check rules run. */
   checkRules: async () => {
     const off = await read<Rule[]>(CHECK_RULES_OFF, []);

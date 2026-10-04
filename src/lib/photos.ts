@@ -8,7 +8,8 @@
 
 import type { Store } from "./library";
 
-export type Placement = "full" | "box" | "background" | "asis";
+/** "grid" picks several logos to insert together (insertLogoGrid), rather than placing one. */
+export type Placement = "full" | "box" | "background" | "asis" | "grid";
 export type Anchor = "top" | "center" | "bottom";
 
 export interface PhotoEntry {

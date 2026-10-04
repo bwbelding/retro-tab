@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoFixable, checkDeck, closestColor, countByRule, describeShape, RULES, type Rule, type Run, type ShapeSnap, type SlideSnap } from "../src/lib/deckCheck";
+import { autoFixable, checkDeck, positionIssues, closestColor, countByRule, describeShape, RULES, type Rule, type Run, type ShapeSnap, type SlideSnap } from "../src/lib/deckCheck";
 
 const size = { width: 960, height: 540 };
 const kit = { name: "Company", colors: ["#E07A1F", "#333F48", "#5E8AB4"], headingFont: "Georgia", bodyFont: "Arial" };
@@ -35,6 +35,11 @@ describe("brand rules", () => {
     ]);
     expect(issues[0].fix).toEqual({ kind: "fill", path: s.path, to: "#E07A1F" });
     expect(issues[1].fix).toMatchObject({ kind: "textColor", runs: [{ start: 0, length: 3 }, { start: 9, length: 2 }], to: "#333F48" });
+  });
+
+  it("leaves the status colors of shapes Retro built alone, but still checks their fonts", () => {
+    const s = shape({ built: true, fill: "#1E8E3E", runs: [run(0, 3, { color: "#D93025", font: "Calibri" })] });
+    expect(checkDeck(deck(s), kit, size, only("colors", "fonts")).map((i) => i.rule)).toEqual(["fonts"]);
   });
 
   it("skips font and color rules when the kit has none", () => {
@@ -142,5 +147,29 @@ describe("helpers", () => {
     const s = shape({ fill: "#FF0000", runs: [run(0, 2, { font: "Calibri" })], left: -50 });
     expect(checkDeck(deck(s), kit, size, only("fonts")).map((i) => i.rule)).toEqual(["fonts"]);
     expect(checkDeck(deck(s), kit, size, new Set()).length).toBe(0);
+  });
+});
+
+describe("position rule", () => {
+  const title = (left: number, top: number) => shape({ type: "Placeholder", placeholder: { type: "Title", empty: false }, content: "A title here", left, top, width: 800, height: 60 });
+  const logo = (left: number, top: number, width = 80) => shape({ type: "Image", picture: { alt: "Logo", decorative: false }, left, top, width, height: 30 });
+  const slide = (index: number, shapes: ShapeSnap[], layoutId = "L1"): SlideSnap => ({ id: `s${index}`, index, title: "A title here", shapes, layoutId });
+
+  it("flags titles that drift from where the same layout usually has them, and snaps them back", () => {
+    const slides = [slide(0, [title(40, 30)]), slide(1, [title(40, 30)]), slide(2, [title(44, 32)]), slide(3, [title(40, 30)]), slide(4, [title(40, 200)]), slide(5, [title(90, 90)], "L2")];
+    const issues = positionIssues(slides);
+    expect(issues.map((i) => `${i.slideIndex}: ${i.label} ${i.text}`)).toEqual(["2: Title is 4 pt off from where it is on other slides"]);
+    expect(issues[0].fix).toEqual({ kind: "move", path: slides[2].shapes[0].path, left: 40, top: 30, width: 800, height: 60 });
+  });
+
+  it("flags a repeated logo that's slightly off, but not other pictures", () => {
+    const slides = [0, 1, 2, 3].map((i) => slide(i, [logo(i === 2 ? 852 : 850, 500), logo(100 + i * 200, 200, 300)]));
+    const issues = positionIssues(slides);
+    expect(issues.map((i) => `${i.slideIndex}: ${i.label}`)).toEqual(["2: Logo"]);
+    expect(issues[0].fix).toEqual({ kind: "move", path: slides[2].shapes[0].path, left: 850, top: 500, width: 80, height: 30 });
+  });
+
+  it("needs three slides to call something usual", () => {
+    expect(positionIssues([slide(0, [title(40, 30)]), slide(1, [title(44, 30)])])).toEqual([]);
   });
 });

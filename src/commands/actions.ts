@@ -2,6 +2,7 @@
 // runtime, so buttons act in one click; the pane only opens to show a result or a problem.
 
 import { activity, describeError } from "../lib/activity";
+import { markAppendix, moveAppendix } from "../lib/appendix";
 import { applyFill, applyFonts } from "../lib/brandActions";
 import { matchSize, swapPositions, type Dimension } from "../lib/layout";
 import { addStamp, addSticky, scanNotes, type StampLabel } from "../lib/notes";
@@ -111,6 +112,11 @@ export const ACTIONS: Record<ActionName, Action> = {
   openSlideLibrary: { view: "shapes", run: () => (pane.setLibrary("slides"), pane.open("shapes")) },
   saveSlides: { view: "shapes", run: () => (pane.setLibrary("slides", true), pane.open("shapes")) },
   openFind: { view: "check", run: () => (pane.setCheckMode("find"), pane.open("check")) },
+  openStoryline: { view: "check", run: () => (pane.setCheckMode("story"), pane.open("check")) },
+  openTracker: { view: "tools", run: () => (pane.setToolsMode("sections"), pane.open("tools")) },
+  openBuilders: { view: "tools", run: () => (pane.setToolsMode("builders"), pane.open("tools")) },
+  markAppendix: { view: "tools", run: async () => void (await markAppendix(true)) },
+  moveAppendix: { view: "tools", run: async () => void (await moveAppendix()) },
   renumberCircles: {
     view: "tools",
     run: async () => {
