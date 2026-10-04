@@ -33,6 +33,10 @@ export interface LibraryItem {
   preview?: string;
   /** Its stored slide holds only the saved shapes (see slideStrip.ts). Older items get stripped on load. */
   stripped?: boolean;
+  /** "slides" for whole slides saved to the slide library; shapes otherwise. */
+  kind?: "slides";
+  /** Slide library items: how many slides. */
+  slides?: number;
 }
 
 interface StoredPart {
@@ -46,7 +50,12 @@ interface ItemData {
   recipe: Recipe;
   /** The exported slide's zip entries, in order, by content hash. */
   parts: { name: string; hash: string }[];
+  /** Slide library items with more than one slide: the other slides, the same way. */
+  more?: { name: string; hash: string }[][];
 }
+
+/** Every slide's parts in an item. */
+const allParts = (data: ItemData) => [data.parts, ...(data.more ?? [])];
 
 export interface Store {
   get<T>(key: string): Promise<T | undefined>;
@@ -97,6 +106,9 @@ export interface NewItem {
   pptx: Uint8Array;
   issues: string[];
   preview?: string;
+  /** Slide library items: "slides", with any further slides after the first in `more`. */
+  kind?: "slides";
+  more?: Uint8Array[];
 }
 
 /** A backup file's contents: the library and Retro's settings, as JSON. */
@@ -111,7 +123,7 @@ export interface Backup {
 }
 
 /** Settings (kv keys) that go into backups. */
-export const SETTING_KEYS = ["pref.matchReference", "pref.photo", "pref.checkRules", "brand.kits"];
+export const SETTING_KEYS = ["pref.matchReference", "pref.photo", "pref.checkRulesOff", "brand.kits"];
 
 /** Version 1.5.0 stored the star as "favourite"; read it as "favorite". */
 function upgrade(item: LibraryItem & { favourite?: boolean }): LibraryItem {
@@ -161,15 +173,33 @@ export function createLibrary(store: Store) {
     }
   }
 
+  async function slidesOf(id: string): Promise<Uint8Array[]> {
+    const data = await store.get<ItemData>(dataKey(id));
+    if (!data) throw new Error("This library item's data is missing.");
+    const files: Uint8Array[] = [];
+    for (const parts of allParts(data)) {
+      const entries: RawEntry[] = [];
+      for (const { name, hash } of parts) {
+        const part = await store.get<StoredPart>(partKey(hash));
+        if (!part) throw new Error(`Part of this library item is missing (${name}).`);
+        entries.push({ name, ...part });
+      }
+      files.push(writeZip(entries));
+    }
+    return files;
+  }
+
   return {
     list,
 
     save: exclusive(async (item: NewItem): Promise<LibraryItem> => {
       const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
       const parts = await storeParts(item.pptx, refs);
+      const more: ItemData["parts"][] = [];
+      for (const pptx of item.more ?? []) more.push(await storeParts(pptx, refs));
       const saved: LibraryItem = {
         id: crypto.randomUUID(),
-        name: item.name.trim() || "Shape",
+        name: item.name.trim() || (item.kind ? "Slide" : "Shape"),
         category: item.category.trim(),
         favorite: false,
         created: new Date().toISOString(),
@@ -179,8 +209,9 @@ export function createLibrary(store: Store) {
         box: item.recipe.box,
         preview: item.preview,
         stripped: true,
+        ...(item.kind ? { kind: item.kind, slides: 1 + more.length } : {}),
       };
-      await store.set(dataKey(saved.id), { recipe: item.recipe, parts } satisfies ItemData);
+      await store.set(dataKey(saved.id), { recipe: item.recipe, parts, ...(more.length ? { more } : {}) } satisfies ItemData);
       await store.set(REFS, refs);
       await writeIndex([saved, ...(await list())]);
       return saved;
@@ -198,21 +229,23 @@ export function createLibrary(store: Store) {
     remove: exclusive(async (id: string): Promise<void> => {
       const data = await store.get<ItemData>(dataKey(id));
       const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
-      await releaseParts(data?.parts ?? [], refs);
+      for (const parts of data ? allParts(data) : []) await releaseParts(parts, refs);
       await store.set(REFS, refs);
       await store.del(dataKey(id));
       await writeIndex((await list()).filter((i) => i.id !== id));
     }),
 
-    /** Swap an item's stored slide for a new one (used to strip older items), and mark it stripped. */
-    replacePptx: exclusive(async (id: string, pptx: Uint8Array): Promise<void> => {
+    /** Swap an item's stored slides for new ones (used to strip older items), and mark it stripped. */
+    replacePptx: exclusive(async (id: string, pptx: Uint8Array, morePptx: Uint8Array[] = []): Promise<void> => {
       const data = await store.get<ItemData>(dataKey(id));
       if (!data) return;
       const refs = (await store.get<Record<string, number>>(REFS)) ?? {};
       const parts = await storeParts(pptx, refs);
-      await releaseParts(data.parts, refs);
+      const more: ItemData["parts"][] = [];
+      for (const extra of morePptx) more.push(await storeParts(extra, refs));
+      for (const old of allParts(data)) await releaseParts(old, refs);
       await store.set(REFS, refs);
-      await store.set(dataKey(id), { ...data, parts } satisfies ItemData);
+      await store.set(dataKey(id), { recipe: data.recipe, parts, ...(more.length ? { more } : {}) } satisfies ItemData);
       await writeIndex((await list()).map((i) => (i.id === id ? { ...i, stripped: true } : i)));
     }),
 
@@ -229,7 +262,7 @@ export function createLibrary(store: Store) {
         const data = await store.get<ItemData>(dataKey(item.id));
         if (!data) continue;
         backup.data[item.id] = data;
-        for (const { hash } of data.parts) {
+        for (const { hash } of allParts(data).flat()) {
           if (backup.parts[hash]) continue;
           const part = await store.get<StoredPart>(partKey(hash));
           if (part) backup.parts[hash] = { ...part, data: bytesToBase64(part.data) };
@@ -252,7 +285,7 @@ export function createLibrary(store: Store) {
       for (const item of backup.items.map(upgrade)) {
         const data = backup.data[item.id];
         if (have.has(item.id) || !data) continue;
-        for (const { hash } of data.parts) {
+        for (const { hash } of allParts(data).flat()) {
           const part = backup.parts[hash];
           if (!part) throw new Error("The backup file is incomplete.");
           if (!refs[hash] || !(await store.get(partKey(hash)))) await store.set(partKey(hash), { ...part, data: base64ToBytes(part.data) });
@@ -271,16 +304,11 @@ export function createLibrary(store: Store) {
 
     /** The exported slide the item was saved from, reassembled. */
     async pptx(id: string): Promise<Uint8Array> {
-      const data = await store.get<ItemData>(dataKey(id));
-      if (!data) throw new Error("This library item's data is missing.");
-      const entries: RawEntry[] = [];
-      for (const { name, hash } of data.parts) {
-        const part = await store.get<StoredPart>(partKey(hash));
-        if (!part) throw new Error(`Part of this library item is missing (${name}).`);
-        entries.push({ name, ...part });
-      }
-      return writeZip(entries);
+      return (await slidesOf(id))[0];
     },
+
+    /** Every slide in the item (one for shapes), each as its own .pptx, in order. */
+    slides: slidesOf,
   };
 }
 

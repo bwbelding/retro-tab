@@ -31,6 +31,9 @@ export const DO_ACTIONS = [
   "applyFill2",
   "applyFill3",
   "refreshTracker",
+  "openSlideLibrary",
+  "saveSlides",
+  "openFind",
 ] as const;
 
 export type ActionName = (typeof SHOW_ACTIONS)[number] | (typeof DO_ACTIONS)[number];

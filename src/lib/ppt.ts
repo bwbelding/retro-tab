@@ -61,3 +61,10 @@ export function applyRects(shapes: PowerPoint.Shape[], rects: Rect[]): void {
     s.height = r.height;
   }
 }
+
+/** A shape by its ids from the slide's top level down (one id unless it's inside groups). */
+export function shapeAt(context: PowerPoint.RequestContext, slideId: string, path: string[]): PowerPoint.Shape {
+  let shape = context.presentation.slides.getItem(slideId).shapes.getItem(path[0]);
+  for (const id of path.slice(1)) shape = shape.group.shapes.getItem(id);
+  return shape;
+}

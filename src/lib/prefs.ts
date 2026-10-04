@@ -7,7 +7,8 @@ import { kv } from "./idb";
 
 const MATCH_REF = "pref.matchReference";
 const PHOTO = "pref.photo";
-const CHECK_RULES = "pref.checkRules";
+// The rules switched off (not on), so rules added later start switched on.
+const CHECK_RULES_OFF = "pref.checkRulesOff";
 
 async function read<T>(key: string, fallback: T): Promise<T> {
   try {
@@ -30,6 +31,13 @@ export const prefs = {
   photo: () => read<{ placement: Placement; anchor: Anchor }>(PHOTO, { placement: "full", anchor: "center" }),
   setPhoto: (value: { placement: Placement; anchor: Anchor }) => kv.set(PHOTO, value),
   /** Which Deck Check rules run. */
-  checkRules: () => read<Rule[]>(CHECK_RULES, RULES.map((r) => r.rule)),
-  setCheckRules: (rules: Rule[]) => kv.set(CHECK_RULES, rules),
+  checkRules: async () => {
+    const off = await read<Rule[]>(CHECK_RULES_OFF, []);
+    return RULES.map((r) => r.rule).filter((r) => !off.includes(r));
+  },
+  setCheckRules: (rules: Rule[]) =>
+    kv.set(
+      CHECK_RULES_OFF,
+      RULES.map((r) => r.rule).filter((r) => !rules.includes(r)),
+    ),
 };

@@ -1,11 +1,11 @@
-// Reading the deck for Deck Check, and going to a problem. The rules are in deckCheck.ts.
+// Reading the deck for Deck Check, going to a problem and fixing it. The rules are in deckCheck.ts.
 
-import type { ShapeSnap, SlideSnap } from "./deckCheck";
+import type { Fix, ShapeSnap, SlideSnap } from "./deckCheck";
 import { KIND_TAG } from "./notes";
-import { slideSize, type SlideSize } from "./ppt";
+import { shapeAt, slideSize, type SlideSize } from "./ppt";
 
-/** Retro's own additions aren't checked: notes, stamps and the tracker are meant to look different. */
-const SKIP_KINDS = ["sticky", "stamp", "tracker"];
+/** Retro's notes and stamps are only checked for being left in; its tracker isn't checked at all. */
+const NOTE_KINDS = ["sticky", "stamp"];
 const FILLED = ["GeometricShape", "TextBox", "Callout", "Freeform"];
 const PICTURES = ["Image", "Graphic"];
 const TITLES = ["Title", "CenterTitle", "VerticalTitle"];
@@ -41,8 +41,8 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
     const kinds = perSlide.map((shapes) => shapes.items.map((shape) => shape.tags.getItemOrNullObject(KIND_TAG).load("value")));
     await context.sync();
     const all: Pending[] = [];
-    const snap = (shape: PowerPoint.Shape, selectId: string, nested: boolean): ShapeSnap => ({
-      selectId,
+    const snap = (shape: PowerPoint.Shape, path: string[], nested: boolean): ShapeSnap => ({
+      path,
       name: shape.name,
       type: shape.type,
       left: shape.left,
@@ -50,27 +50,28 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
       width: shape.width,
       height: shape.height,
       nested: nested || undefined,
-      fonts: [],
-      textColors: [],
+      runs: [],
     });
     perSlide.forEach((shapes, i) =>
       shapes.items.forEach((shape, n) => {
-        const kind = kinds[i][n];
-        if (!kind.isNullObject && SKIP_KINDS.includes(kind.value.toLowerCase())) return;
-        all.push({ snap: snap(shape, shape.id, false), shape, slide: i });
+        const kind = kinds[i][n].isNullObject ? "" : kinds[i][n].value.toLowerCase();
+        if (kind === "tracker") return;
+        const p = { snap: snap(shape, [shape.id], false), shape, slide: i };
+        if (NOTE_KINDS.includes(kind)) p.snap.retro = kind as "sticky" | "stamp";
+        all.push(p);
       }),
     );
 
     // Shapes inside groups (and groups in groups), selected through their top-level group.
     if (groups) {
-      let frontier = all.filter((p) => p.snap.type === "Group");
+      let frontier = all.filter((p) => p.snap.type === "Group" && !p.snap.retro);
       for (let depth = 0; depth < 4 && frontier.length; depth++) {
         const inner = frontier.map((p) => ({ parent: p, shapes: p.shape.group.shapes.load(PROPS) }));
         await context.sync();
         frontier = [];
         for (const { parent, shapes } of inner) {
           for (const shape of shapes.items) {
-            const child = { snap: snap(shape, parent.snap.selectId, true), shape, slide: parent.slide };
+            const child = { snap: snap(shape, [...parent.snap.path, shape.id], true), shape, slide: parent.slide };
             all.push(child);
             if (shape.type === "Group") frontier.push(child);
           }
@@ -87,7 +88,7 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
     await context.sync();
     const isPicture = (i: number) => PICTURES.includes(all[i].snap.type) || PICTURES.includes(formats[i]?.containedType ?? "");
     const alts = all.map((p, i) => (full && isPicture(i) ? p.shape.load("altTextDescription,isDecorative") : undefined));
-    const ranges = frames.map((f) => (f && !f.isNullObject && f.hasText ? f.textRange.load("text,font/name,font/color") : undefined));
+    const ranges = frames.map((f) => (f && !f.isNullObject && f.hasText ? f.textRange.load(`text,${FONT}`) : undefined));
     await context.sync();
 
     all.forEach((p, i) => {
@@ -99,18 +100,20 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
       if (format) p.snap.placeholder = { type: format.type, empty: full && format.containedType === null && !hasText };
       if (alts[i]) p.snap.picture = { alt: alts[i]!.altTextDescription ?? "", decorative: Boolean(alts[i]!.isDecorative) };
       const range = ranges[i];
-      if (range) p.snap.text = range.text.replace(/\s+/g, " ").trim().slice(0, 80);
+      if (range) p.snap.content = range.text;
     });
 
-    // Fonts and text colors. Mixed text reports no single font, so it's split until each piece has one.
+    // Fonts, colors and sizes. Mixed text reports no single value, so it's split until each piece
+    // has one, keeping where each piece is so a fix can change just those characters.
     let pieces = ranges.flatMap((range, i) => (range ? [{ snap: all[i].snap, range, start: 0, length: range.text.length }] : []));
     for (let round = 0; pieces.length; round++) {
       const next: typeof pieces = [];
       for (const piece of pieces) {
-        const { name, color } = piece.range.font;
-        if (name) piece.snap.fonts.push(name);
-        if (color) piece.snap.textColors.push(color);
-        if ((name && color) || piece.length < 2 || round >= MAX_SPLITS) continue;
+        const { name, color, size } = piece.range.font;
+        if ((name && color && size) || piece.length < 2 || round >= MAX_SPLITS) {
+          piece.snap.runs.push({ start: piece.start, length: piece.length, font: name || undefined, color: color || undefined, size: size || undefined });
+          continue;
+        }
         const half = Math.floor(piece.length / 2);
         next.push({ snap: piece.snap, range: rangeOf(piece, piece.start, half), start: piece.start, length: half });
         next.push({ snap: piece.snap, range: rangeOf(piece, piece.start + half, piece.length - half), start: piece.start + half, length: piece.length - half });
@@ -123,8 +126,8 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
     const result: SlideSnap[] = slides.items.map((slide, index) => ({ id: slide.id, index, title: "", shapes: [] }));
     for (const p of all) result[p.slide].shapes.push(p.snap);
     for (const s of result) {
-      const title = s.shapes.find((x) => x.placeholder && TITLES.includes(x.placeholder.type) && x.text);
-      s.title = title?.text ?? "";
+      const title = s.shapes.find((x) => x.placeholder && TITLES.includes(x.placeholder.type) && x.content?.trim());
+      s.title = title?.content?.replace(/\s+/g, " ").trim() ?? "";
     }
     return { slides: result, size, full };
   });
@@ -132,15 +135,60 @@ export async function snapshotDeck(): Promise<DeckSnapshot> {
 
 /** A piece of a text range, with its font loaded. Positions are within the whole text. */
 function rangeOf(piece: { range: PowerPoint.TextRange; start: number }, start: number, length: number): PowerPoint.TextRange {
-  return piece.range.getSubstring(start - piece.start, length).load("font/name,font/color");
+  return piece.range.getSubstring(start - piece.start, length).load(FONT);
 }
 
-/** Go to a slide and select a shape on it. */
+const FONT = "font/name,font/color,font/size";
+
+/** Go to a slide, and select a shape on it if there is one. */
 export async function goToShape(slideId: string, shapeId: string): Promise<void> {
   await PowerPoint.run(async (context) => {
     context.presentation.setSelectedSlides([slideId]);
     await context.sync();
+    if (!shapeId) return;
     context.presentation.slides.getItem(slideId).setSelectedShapes([shapeId]);
     await context.sync();
   });
+}
+
+export interface FixRequest {
+  slideId: string;
+  fix: Fix;
+  /** The alt text you typed, for an "alt" fix. */
+  alt?: string;
+}
+
+/** Apply fixes in one go. Deletions run last, so nothing else refers to a deleted shape. */
+export async function applyFixes(requests: FixRequest[]): Promise<number> {
+  await PowerPoint.run(async (context) => {
+    const ordered = [...requests].sort((a, b) => Number(a.fix.kind === "delete") - Number(b.fix.kind === "delete"));
+    for (const { slideId, fix, alt } of ordered) {
+      const shape = shapeAt(context, slideId, fix.path);
+      switch (fix.kind) {
+        case "font":
+        case "textColor":
+          for (const r of fix.runs) {
+            const font = shape.textFrame.textRange.getSubstring(r.start, r.length).font;
+            if (fix.kind === "font") font.name = fix.to;
+            else font.color = fix.to;
+          }
+          break;
+        case "fill":
+          shape.fill.setSolidColor(fix.to);
+          break;
+        case "move":
+          shape.left = fix.left;
+          shape.top = fix.top;
+          break;
+        case "alt":
+          if (alt?.trim()) shape.altTextDescription = alt.trim();
+          break;
+        case "delete":
+          shape.delete();
+          break;
+      }
+    }
+    await context.sync();
+  });
+  return requests.length;
 }

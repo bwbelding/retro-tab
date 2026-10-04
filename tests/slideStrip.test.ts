@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Window } from "happy-dom";
-import { stripToCaptured } from "../src/lib/slideStrip";
+import { cleanSlide, stripToCaptured } from "../src/lib/slideStrip";
 import { openZip } from "../src/lib/zip";
 import { makeZip } from "./helpers/makeZip";
 
@@ -139,5 +139,18 @@ describe("stripping a saved slide", () => {
     for (const gone of ["notesSlide1", "chart1", "docProps", "tag2", "commentAuthors", "comment1"]) expect(types).not.toContain(gone);
     expect(types).toContain("/ppt/slides/slide1.xml");
     for (const name of zip.names) expect(await zip.bytes(name)).toBeDefined();
+  });
+
+  it("keeps a whole saved slide and its speaker notes, but not comments or the deck's properties", async () => {
+    const zip = openZip(await cleanSlide(await exportedSlide()));
+    const slide = (await zip.text("ppt/slides/slide1.xml"))!;
+    for (const kept of ["Saved badge", "Confidential note", "Revenue chart", "Saved ink", "Other ink", "timing"]) expect(slide).toContain(kept);
+    for (const part of ["ppt/notesSlides/notesSlide1.xml", "ppt/charts/chart1.xml", "ppt/embeddings/Microsoft_Excel_Worksheet.xlsx", "ppt/tags/tag2.xml", "ppt/media/image2.png"]) {
+      expect(zip.names).toContain(part);
+    }
+    for (const gone of ["ppt/comments/comment1.xml", "ppt/commentAuthors.xml", "docProps/core.xml", "docProps/thumbnail.jpeg", "customXml/item1.xml", "ppt/media/image3.png"]) {
+      expect(zip.names).not.toContain(gone);
+    }
+    expect(await zip.text("ppt/slides/_rels/slide1.xml.rels")).not.toContain("comments");
   });
 });

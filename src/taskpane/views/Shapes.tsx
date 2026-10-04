@@ -17,10 +17,10 @@ import {
 import { AddRegular, MoreHorizontalRegular, SearchRegular, ShapesRegular, StarFilled, StarRegular } from "@fluentui/react-icons";
 import { activity, describeError } from "../../lib/activity";
 import { categoriesOf, filterItems, type Filter, type LibraryItem } from "../../lib/library";
-import { cleanupHelperSlides, insertItem, library, saveSelection, stripOldItems } from "../../lib/libraryActions";
+import { cleanupHelperSlides, insertItem, insertSlides, library, saveSelection, saveSlides, stripOldItems } from "../../lib/libraryActions";
 import { UserError } from "../../lib/ppt";
-import { pane } from "../store";
-import { Section, useUi } from "../ui";
+import { pane, usePane } from "../store";
+import { Section, Seg, useUi } from "../ui";
 import { ShapeTest } from "./ShapeTest";
 
 const useStyles = makeStyles({
@@ -130,6 +130,12 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
   const insert = async () => {
     pane.showMessage(undefined);
     try {
+      if (item.kind === "slides") {
+        const n = await activity.track("pane insert slides", () => insertSlides(item));
+        pane.showMessage({ intent: "success", text: `Inserted ${n === 1 ? "“" + item.name + "”" : `${n} slides from “${item.name}”`} after the current slide, in this deck's theme.` });
+        reload();
+        return;
+      }
       const route = await activity.track("pane insert shape", () => insertItem(item));
       if (route === "helper") {
         pane.showMessage({
@@ -193,7 +199,11 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
             <div className={s.name} title={item.name}>
               {item.name}
             </div>
-            {item.route === "helper" ? (
+            {item.kind === "slides" ? (
+              <Badge size="small" appearance="tint" color="informative">
+                {item.slides === 1 ? "1 slide" : `${item.slides} slides`}
+              </Badge>
+            ) : item.route === "helper" ? (
               <Badge size="small" appearance="tint" color="warning">
                 Helper slide
               </Badge>
@@ -223,7 +233,7 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
             <MenuPopover>
               <MenuList>
                 <MenuItem onClick={() => void insert()}>Insert</MenuItem>
-                {item.route === "helper" && (
+                {item.route === "helper" && item.kind !== "slides" && (
                   <MenuItem onClick={() => pane.showMessage({ intent: "info", text: `“${item.name}” uses a helper slide because PowerPoint won't let Retro recreate: ${item.issues.join(", ")}.` })}>
                     Why a helper slide?
                   </MenuItem>
@@ -242,7 +252,10 @@ function ItemCard({ item, categories, reload }: { item: LibraryItem; categories:
 export function Shapes() {
   const s = useStyles();
   const ui = useUi();
-  const [items, setItems] = useState<LibraryItem[] | undefined>();
+  const { library: mode, saveRequested } = usePane();
+  const slides = mode === "slides";
+  const [all, setItems] = useState<LibraryItem[] | undefined>();
+  const items = useMemo(() => all?.filter((i) => (i.kind === "slides") === slides), [all, slides]);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -269,6 +282,20 @@ export function Shapes() {
     return () => doc.removeHandlerAsync(Office.EventType.DocumentSelectionChanged, { handler: tidy });
   }, [reload]);
 
+  // The ribbon's "Save selected slides…" opens the save form too.
+  const formOpen = saving || Boolean(saveRequested);
+  const closeForm = () => {
+    setSaving(false);
+    if (saveRequested) pane.setLibrary(mode);
+  };
+
+  const switchTo = (next: "shapes" | "slides") => {
+    setSaving(false);
+    setQuery("");
+    setFilter("all");
+    pane.setLibrary(next);
+  };
+
   const categories = useMemo(() => categoriesOf(items ?? []), [items]);
   const shown = useMemo(() => filterItems(items ?? [], query, filter), [items, query, filter]);
   const chips: { value: Filter; label: string }[] = [
@@ -279,21 +306,33 @@ export function Shapes() {
 
   return (
     <>
-      <Section title="Shape library">
-        {saving ? (
+      <Section title={slides ? "Slide library" : "Shape library"}>
+        <Seg
+          label="Library"
+          value={mode}
+          options={[
+            { value: "shapes", label: "Shapes" },
+            { value: "slides", label: "Slides" },
+          ]}
+          onChange={switchTo}
+        />
+        {formOpen ? (
           <ItemForm
             label="Save to library"
             initial={{ name: "", category: filter.startsWith("category:") ? filter.slice("category:".length) : "" }}
             categories={categories}
-            cancel={() => setSaving(false)}
+            cancel={closeForm}
             submit={async (name, category) => {
               try {
-                const item = await activity.track("pane save shape", () => saveSelection(name, category));
-                setSaving(false);
+                const item = slides
+                  ? await activity.track("pane save slides", () => saveSlides(name, category))
+                  : await activity.track("pane save shape", () => saveSelection(name, category));
+                closeForm();
                 pane.showMessage({
                   intent: "success",
-                  text:
-                    item.route === "click"
+                  text: slides
+                    ? `Saved “${item.name}” (${item.slides === 1 ? "1 slide" : `${item.slides} slides`}), with its speaker notes. Comments aren't saved.`
+                    : item.route === "click"
                       ? `Saved “${item.name}”. It inserts in one click.`
                       : `Saved “${item.name}”. It inserts with a helper slide, because of: ${item.issues.join(", ")}.`,
                 });
@@ -305,7 +344,7 @@ export function Shapes() {
           />
         ) : (
           <Button appearance="primary" icon={<AddRegular />} style={{ alignSelf: "flex-start" }} onClick={() => setSaving(true)}>
-            Save selection to library
+            {slides ? "Save selected slides" : "Save selection to library"}
           </Button>
         )}
       </Section>
@@ -317,7 +356,9 @@ export function Shapes() {
           </Text>
         ) : items.length === 0 ? (
           <Text size={200} className={ui.muted}>
-            Your library is empty. Select shapes on a slide, then click “Save selection to library”. Click a saved shape to insert it where it was saved.
+            {slides
+              ? "No saved slides yet. Select one or more slides in the thumbnails, then click “Save selected slides”. Click a saved slide to insert it after the current one."
+              : "Your library is empty. Select shapes on a slide, then click “Save selection to library”. Click a saved shape to insert it where it was saved."}
           </Text>
         ) : (
           <>
@@ -340,15 +381,21 @@ export function Shapes() {
                 ))}
               </div>
             )}
-            <Text size={200} className={ui.muted}>
-              Most recently used first. Click a shape to insert it where it was saved. <b>One click</b> shapes appear on your slide. <b>Helper slide</b> shapes appear on a new slide, selected:
-              press ⌘X and Retro takes you back to your slide to press ⌘V.
-            </Text>
+            {slides ? (
+              <Text size={200} className={ui.muted}>
+                Most recently used first. Click a saved slide to insert it after the current slide. It takes this deck's theme and keeps its speaker notes.
+              </Text>
+            ) : (
+              <Text size={200} className={ui.muted}>
+                Most recently used first. Click a shape to insert it where it was saved. <b>One click</b> shapes appear on your slide. <b>Helper slide</b> shapes appear on a new slide,
+                selected: press ⌘X and Retro takes you back to your slide to press ⌘V.
+              </Text>
+            )}
           </>
         )}
       </Section>
 
-      {checking ? (
+      {slides ? null : checking ? (
         <ShapeTest />
       ) : (
         <Section>

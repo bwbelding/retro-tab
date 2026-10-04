@@ -1,11 +1,13 @@
-// The shape library's PowerPoint side: saving the selection, inserting items and tidying up
-// helper slides. Storage is in library.ts.
+// The shape and slide libraries' PowerPoint side: saving the selection or slides, inserting items
+// and tidying up helper slides. Storage is in library.ts.
 
 import { kv } from "./idb";
 import { createLibrary, placement, type LibraryItem } from "./library";
+import { KIND_TAG } from "./notes";
 import { currentSlide, slideSize, UserError } from "./ppt";
 import { captureShapes, HELPER_TAG, insertHelperSlide, rebuildIssues, rebuildShapes, type Recipe } from "./shapeCapture";
-import { stripToCaptured } from "./slideStrip";
+import { cleanSlide, stripToCaptured } from "./slideStrip";
+import { AGENDA_TAG, SECTION_TAG } from "./tracker";
 import { base64ToBytes, bytesToBase64 } from "./zip";
 
 export const library = createLibrary(kv);
@@ -81,15 +83,20 @@ let stripping: Promise<void> | undefined;
 
 /**
  * Strip the stored slides of items saved before Retro did that on save (or restored from a
- * backup), so they keep only their saved shapes. An item that fails is left as it was and tried
- * again next time.
+ * backup): shapes keep only their saved shapes, saved slides lose comments and the deck's
+ * properties. An item that fails is left as it was and tried again next time.
  */
 export function stripOldItems(): Promise<void> {
   stripping ??= (async () => {
     for (const item of await library.list()) {
       if (item.stripped) continue;
       try {
-        await library.replacePptx(item.id, await stripToCaptured(await library.pptx(item.id)));
+        if (item.kind === "slides") {
+          const [first, ...more] = await Promise.all((await library.slides(item.id)).map(cleanSlide));
+          await library.replacePptx(item.id, first, more);
+        } else {
+          await library.replacePptx(item.id, await stripToCaptured(await library.pptx(item.id)));
+        }
       } catch {
         // Leave it; inserting still works.
       }
@@ -163,4 +170,65 @@ export async function insertItem(item: LibraryItem): Promise<LibraryItem["route"
   });
   await library.markUsed(item.id);
   return item.route;
+}
+
+/** Save the selected slides (one or more, in deck order) to the slide library as one item. */
+export async function saveSlides(name: string, category: string): Promise<LibraryItem> {
+  if (!Office.context.requirements.isSetSupported("PowerPointApi", "1.8")) {
+    throw new UserError("The slide library needs PowerPoint 16.96 or later.");
+  }
+  const exported = await PowerPoint.run(async (context) => {
+    const all = context.presentation.slides.load("items/id");
+    const selected = context.presentation.getSelectedSlides().load("items/id");
+    await context.sync();
+    const chosen = new Set(selected.items.map((s) => s.id));
+    const slides = all.items.filter((s) => chosen.has(s.id));
+    if (slides.length === 0) throw new UserError("Select the slides to save first (click them in the slide thumbnails).");
+    const files = slides.map((s) => s.exportAsBase64());
+    const image = slides[0].getImageAsBase64({ width: 480 });
+    await context.sync();
+    return { files: files.map((f) => f.value), image: image.value };
+  });
+  // Keep everything on the slides and their speaker notes; drop comments and the deck's properties.
+  const [first, ...more] = await Promise.all(exported.files.map((f) => cleanSlide(base64ToBytes(f))));
+  const size = await PowerPoint.run(async (context) => slideSize(context));
+  const recipe: Recipe = { version: 1, box: { left: 0, top: 0, ...size }, nodes: [] };
+  return library.save({ name, category, recipe, pptx: first, more, issues: [], preview: `data:image/png;base64,${exported.image}`, kind: "slides" });
+}
+
+/**
+ * Insert a saved slide item after the current slide, in this deck's theme. Retro's own section
+ * marks and tracker don't come along: they belong to the deck the slides were saved from.
+ */
+export async function insertSlides(item: LibraryItem): Promise<number> {
+  const files = (await library.slides(item.id)).map(bytesToBase64);
+  const added = await PowerPoint.run(async (context) => {
+    const current = await currentSlide(context);
+    const before = context.presentation.slides.load("items/id");
+    await context.sync();
+    const existing = new Set(before.items.map((s) => s.id));
+    // Each goes right after the current slide, so inserting the last first keeps their order.
+    for (const file of [...files].reverse()) {
+      context.presentation.insertSlidesFromBase64(file, { formatting: PowerPoint.InsertSlideFormatting.useDestinationTheme, targetSlideId: current.id });
+      await context.sync();
+    }
+    const after = context.presentation.slides.load("items/id");
+    await context.sync();
+    const fresh = after.items.filter((s) => !existing.has(s.id));
+    const tags = fresh.map((s) => ({ slide: s, section: s.tags.getItemOrNullObject(SECTION_TAG).load("value"), agenda: s.tags.getItemOrNullObject(AGENDA_TAG).load("value"), shapes: s.shapes.load("items/id") }));
+    await context.sync();
+    const kinds = tags.map((t) => t.shapes.items.map((shape) => ({ shape, kind: shape.tags.getItemOrNullObject(KIND_TAG).load("value") })));
+    await context.sync();
+    tags.forEach((t, i) => {
+      if (!t.section.isNullObject) t.slide.tags.delete(SECTION_TAG);
+      if (!t.agenda.isNullObject) t.slide.tags.delete(AGENDA_TAG);
+      for (const { shape, kind } of kinds[i]) if (!kind.isNullObject && kind.value.toLowerCase() === "tracker") shape.delete();
+    });
+    await context.sync();
+    if (fresh[0]) context.presentation.setSelectedSlides([fresh[0].id]);
+    await context.sync();
+    return fresh.length;
+  });
+  await library.markUsed(item.id);
+  return added;
 }

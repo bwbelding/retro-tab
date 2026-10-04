@@ -102,15 +102,36 @@ export async function stripToCaptured(pptx: Uint8Array): Promise<Uint8Array> {
   const used = usedIds(slideDoc);
   for (const r of slideRels.rels) if (!r.type.endsWith("/slideLayout") && !used.has(r.id)) r.el.remove();
 
+  return finishPackage(zip, new Map([
+    [slide, serialize(slideDoc)],
+    [slideRelsPart, serialize(slideRels.doc!)],
+  ]));
+}
+
+/**
+ * A whole saved slide (the slide library): everything on the slide and its speaker notes stay;
+ * its comments, the deck's properties, thumbnail, comment authors and printer settings go.
+ */
+export async function cleanSlide(pptx: Uint8Array): Promise<Uint8Array> {
+  const zip = openZip(pptx);
+  const slide = slidePart(zip);
+  if (!slide) throw new Error("The exported file has no slide in it.");
+  const slideRelsPart = relsPartOf(slide);
+  const slideRels = readRels(await zip.text(slideRelsPart), slide);
+  for (const r of slideRels.rels) if (r.type.endsWith("/comments")) r.el.remove(); // classic and modern comments
+  return finishPackage(zip, slideRels.doc ? new Map([[slideRelsPart, serialize(slideRels.doc)]]) : new Map());
+}
+
+/**
+ * Drop the package-level parts that hold people's names or document metadata, then every part
+ * nothing refers to any more, and write the package with the changed parts.
+ */
+async function finishPackage(zip: ReturnType<typeof openZip>, changed: Map<string, Uint8Array>): Promise<Uint8Array> {
   // The package drops its document properties and thumbnail (deck title, authors, slide titles).
   const rootRels = readRels(await zip.text("_rels/.rels"), "");
   for (const r of rootRels.rels) if (!r.type.endsWith("/officeDocument")) r.el.remove();
 
-  const changed = new Map<string, Uint8Array>([
-    [slide, serialize(slideDoc)],
-    [slideRelsPart, serialize(slideRels.doc!)],
-    ["_rels/.rels", serialize(rootRels.doc!)],
-  ]);
+  changed.set("_rels/.rels", serialize(rootRels.doc!));
 
   // The presentation drops its comment authors, printer settings and document-management metadata.
   const presentation = rootRels.rels.find((r) => r.type.endsWith("/officeDocument"))?.target;
